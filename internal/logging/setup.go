@@ -8,6 +8,9 @@ import (
 	"github.com/jmylchreest/slog-logfilter"
 )
 
+// Setup configures the logger with the given level and format.
+// Formats: "json" (default, recommended for k8s), "text" (logfmt style)
+// For pretty output, pipe JSON through humanlog: kubectl logs -f app | humanlog
 func Setup(logLevel string, format string) *slog.Logger {
 	level := parseLevel(logLevel)
 
@@ -16,10 +19,10 @@ func Setup(logLevel string, format string) *slog.Logger {
 		logfilter.WithOutput(os.Stdout),
 	}
 
-	if format == "json" {
-		opts = append(opts, logfilter.WithFormat("json"))
-	} else {
+	if format == "text" {
 		opts = append(opts, logfilter.WithFormat("text"))
+	} else {
+		opts = append(opts, logfilter.WithFormat("json"))
 	}
 
 	logger := logfilter.New(opts...)

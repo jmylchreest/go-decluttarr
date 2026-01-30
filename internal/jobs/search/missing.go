@@ -185,7 +185,7 @@ func (j *MissingJob) searchMissingSonarr(ctx context.Context, instanceName strin
 
 		if len(missingEpisodeIDs) > 0 {
 			found += len(missingEpisodeIDs)
-			logger.Info("found missing episodes",
+			logger.Debug("found missing episodes",
 				"series", series.Title,
 				"count", len(missingEpisodeIDs))
 
@@ -202,12 +202,12 @@ func (j *MissingJob) searchMissingSonarr(ctx context.Context, instanceName strin
 						"error", err)
 				} else {
 					searched += len(missingEpisodeIDs)
-					logger.Info("triggered search",
+					logger.Debug("triggered search",
 						"series", series.Title,
 						"episode_count", len(missingEpisodeIDs))
 				}
 			} else {
-				logger.Info("test run: would trigger search",
+				logger.Debug("test run: would trigger search",
 					"series", series.Title,
 					"episode_count", len(missingEpisodeIDs))
 			}
@@ -241,7 +241,7 @@ func (j *MissingJob) searchMissingRadarr(ctx context.Context, instanceName strin
 		}
 
 		found++
-		logger.Info("found missing movie", "title", movie.Title, "year", movie.Year)
+		logger.Debug("found missing movie", "title", movie.Title, "year", movie.Year)
 
 		if !j.testRun {
 			// Acquire semaphore slot
@@ -256,10 +256,10 @@ func (j *MissingJob) searchMissingRadarr(ctx context.Context, instanceName strin
 					"error", err)
 			} else {
 				searched++
-				logger.Info("triggered search", "movie", movie.Title, "year", movie.Year)
+				logger.Debug("triggered search", "movie", movie.Title, "year", movie.Year)
 			}
 		} else {
-			logger.Info("test run: would trigger search", "movie", movie.Title, "year", movie.Year)
+			logger.Debug("test run: would trigger search", "movie", movie.Title, "year", movie.Year)
 		}
 	}
 

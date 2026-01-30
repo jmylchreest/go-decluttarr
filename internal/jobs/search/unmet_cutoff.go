@@ -184,13 +184,13 @@ func (j *UnmetCutoffJob) processSonarr(ctx context.Context, instanceName string,
 			}
 
 			if j.testRun {
-				j.logger.Info("TEST RUN: would search episodes",
+				j.logger.Debug("TEST RUN: would search episodes",
 					"instance", instanceName,
 					"series_id", seriesID,
 					"season", seasonNum,
 					"episode_count", len(episodeIDs))
 			} else {
-				j.logger.Info("searching episodes",
+				j.logger.Debug("searching episodes",
 					"instance", instanceName,
 					"series_id", seriesID,
 					"season", seasonNum,
@@ -260,12 +260,12 @@ func (j *UnmetCutoffJob) processRadarr(ctx context.Context, instanceName string,
 		movieID := *item.MovieID
 
 		if j.testRun {
-			j.logger.Info("TEST RUN: would search movie",
+			j.logger.Debug("TEST RUN: would search movie",
 				"instance", instanceName,
 				"movie_id", movieID,
 				"title", item.Title)
 		} else {
-			j.logger.Info("searching movie",
+			j.logger.Debug("searching movie",
 				"instance", instanceName,
 				"movie_id", movieID,
 				"title", item.Title)

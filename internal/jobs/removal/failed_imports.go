@@ -140,7 +140,7 @@ func (j *FailedImportsJob) Run(ctx context.Context) error {
 
 			// Add strike for this download
 			currentStrikes := strikesHandler.Add(item.DownloadID, j.name, item.Title)
-			j.logger.Info("added strike to failed import",
+			j.logger.Debug("added strike to failed import",
 				"title", item.Title,
 				"download_id", item.DownloadID,
 				"strikes", currentStrikes,

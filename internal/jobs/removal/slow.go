@@ -152,7 +152,7 @@ func (j *SlowDownloadJob) Run(ctx context.Context) error {
 
 				// Increment strikes
 				currentStrikes := strikesHandler.Add(item.DownloadID, j.name, item.Title)
-				j.logger.Info("added strike to slow download",
+				j.logger.Debug("added strike to slow download",
 					"title", item.Title,
 					"download_id", item.DownloadID,
 					"strikes", currentStrikes,

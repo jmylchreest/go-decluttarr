@@ -68,12 +68,34 @@ go-declutarr --config config.yaml
 go-declutarr --config config.yaml --data /data
 ```
 
+## Logging
+
+Logs are output in JSON format by default (recommended for log aggregators). Environment variables override config:
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `LOG_LEVEL` | debug, info, warn, error | info |
+| `LOG_FORMAT` | json, text | json |
+
+For pretty output locally, pipe through [humanlog](https://github.com/humanlogio/humanlog):
+
+```bash
+# Local development
+go-declutarr --config config.yaml 2>&1 | humanlog
+
+# Kubernetes
+kubectl logs -f deploy/go-declutarr | humanlog
+```
+
 ## Docker Compose
 
 ```yaml
 services:
   go-declutarr:
     image: ghcr.io/jmylchreest/go-declutarr:latest
+    environment:
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
     volumes:
       - ./config.yaml:/config/config.yaml:ro
       - ./data:/data

@@ -150,7 +150,7 @@ func (j *BadFilesJob) Run(ctx context.Context) error {
 
 			// Add strike for this download
 			currentStrikes := strikesHandler.Add(item.DownloadID, j.name, item.Title)
-			j.logger.Info("added strike to bad file download",
+			j.logger.Debug("added strike to bad file download",
 				"title", item.Title,
 				"download_id", item.DownloadID,
 				"strikes", currentStrikes,

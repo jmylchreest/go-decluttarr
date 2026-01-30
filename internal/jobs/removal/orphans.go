@@ -118,7 +118,7 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 			}
 
 			orphanCount++
-			j.logger.Info("found orphaned torrent",
+			j.logger.Debug("found orphaned torrent",
 				"client", clientName,
 				"hash", torrent.Hash,
 				"name", torrent.Name,
@@ -133,7 +133,7 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 
 			// Check if strikes exceeded
 			if !strikesHandler.HasExceeded(torrent.Hash, j.maxStrikes) {
-				j.logger.Info("orphaned torrent has not exceeded max strikes yet",
+				j.logger.Debug("orphaned torrent has not exceeded max strikes yet",
 					"hash", torrent.Hash,
 					"current_strikes", currentStrikes,
 					"max_strikes", j.maxStrikes)

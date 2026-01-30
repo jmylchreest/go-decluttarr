@@ -111,7 +111,7 @@ func (j *UnmonitoredJob) Run(ctx context.Context) error {
 				continue
 			}
 
-			j.logger.Info("found unmonitored item",
+			j.logger.Debug("found unmonitored item",
 				"instance", instanceName,
 				"app", systemStatus.AppName,
 				"queue_id", item.ID,
@@ -127,7 +127,7 @@ func (j *UnmonitoredJob) Run(ctx context.Context) error {
 
 			// Check if strikes exceeded
 			if !strikesHandler.HasExceeded(item.DownloadID, j.maxStrikes) {
-				j.logger.Info("unmonitored item has not exceeded max strikes yet",
+				j.logger.Debug("unmonitored item has not exceeded max strikes yet",
 					"download_id", item.DownloadID,
 					"current_strikes", currentStrikes,
 					"max_strikes", j.maxStrikes)

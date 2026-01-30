@@ -39,8 +39,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Setup logging
-	logger := logging.Setup(cfg.General.LogLevel, "text")
+	// Setup logging - env vars override config
+	logLevel := cfg.General.LogLevel
+	if envLevel := os.Getenv("LOG_LEVEL"); envLevel != "" {
+		logLevel = envLevel
+	}
+	logFormat := "json" // default to JSON for k8s/production
+	if envFormat := os.Getenv("LOG_FORMAT"); envFormat != "" {
+		logFormat = envFormat
+	}
+	logger := logging.Setup(logLevel, logFormat)
 	logger.Info("starting go-declutarr", "version", version, "data_dir", *dataDir)
 
 	// Create manager with strikes persistence

@@ -132,7 +132,7 @@ func (j *MissingFilesJob) Run(ctx context.Context) error {
 
 			// Add strike for this download
 			currentStrikes := strikesHandler.Add(item.DownloadID, j.name, item.Title)
-			j.logger.Info("added strike to item with missing files",
+			j.logger.Debug("added strike to item with missing files",
 				"title", item.Title,
 				"download_id", item.DownloadID,
 				"strikes", currentStrikes,
