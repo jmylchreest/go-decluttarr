@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jmylchreest/go-declutarr/internal/arrapi"
-	"github.com/jmylchreest/go-declutarr/internal/config"
-	"github.com/jmylchreest/go-declutarr/internal/downloadclient"
-	"github.com/jmylchreest/go-declutarr/internal/strikes"
+	"github.com/jmylchreest/go-decluttarr/internal/arrapi"
+	"github.com/jmylchreest/go-decluttarr/internal/config"
+	"github.com/jmylchreest/go-decluttarr/internal/downloadclient"
+	"github.com/jmylchreest/go-decluttarr/internal/strikes"
 )
 
 // CycleStats tracks statistics for a single execution cycle

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmylchreest/go-declutarr/pkg/httpclient"
+	"github.com/jmylchreest/go-decluttarr/pkg/httpclient"
 )
 
 // QBittorrentClient implements the Client interface for qBittorrent WebUI API

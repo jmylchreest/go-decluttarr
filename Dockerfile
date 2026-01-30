@@ -16,10 +16,10 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -ldflags="-s -w \
-        -X github.com/jmylchreest/go-declutarr/internal/version.Version=${VERSION} \
-        -X github.com/jmylchreest/go-declutarr/internal/version.Commit=${COMMIT} \
-        -X github.com/jmylchreest/go-declutarr/internal/version.BuildDate=${BUILD_DATE}" \
-    -o go-declutarr ./cmd/go-declutarr
+        -X github.com/jmylchreest/go-decluttarr/internal/version.Version=${VERSION} \
+        -X github.com/jmylchreest/go-decluttarr/internal/version.Commit=${COMMIT} \
+        -X github.com/jmylchreest/go-decluttarr/internal/version.BuildDate=${BUILD_DATE}" \
+    -o go-decluttarr ./cmd/go-decluttarr
 
 # Runtime stage - minimal scratch image
 FROM scratch
@@ -28,8 +28,8 @@ FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Copy binary
-COPY --from=builder /app/go-declutarr /go-declutarr
+COPY --from=builder /app/go-decluttarr /go-decluttarr
 
 USER 65534:65534
 
-ENTRYPOINT ["/go-declutarr"]
+ENTRYPOINT ["/go-decluttarr"]

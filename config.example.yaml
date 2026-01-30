@@ -1,4 +1,4 @@
-# go-declutarr Configuration Example
+# go-decluttarr Configuration Example
 # All durations support: s (seconds), m (minutes), h (hours), d (days)
 # Example: 30s, 5m, 2h, 1d
 

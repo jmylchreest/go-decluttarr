@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/jmylchreest/go-declutarr/internal/arrapi"
-	"github.com/jmylchreest/go-declutarr/internal/config"
-	"github.com/jmylchreest/go-declutarr/internal/jobs"
+	"github.com/jmylchreest/go-decluttarr/internal/arrapi"
+	"github.com/jmylchreest/go-decluttarr/internal/config"
+	"github.com/jmylchreest/go-decluttarr/internal/jobs"
 )
 
 // StalledJob removes stalled downloads from the queue

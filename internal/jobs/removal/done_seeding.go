@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jmylchreest/go-declutarr/internal/config"
-	"github.com/jmylchreest/go-declutarr/internal/downloadclient"
-	"github.com/jmylchreest/go-declutarr/internal/jobs"
+	"github.com/jmylchreest/go-decluttarr/internal/config"
+	"github.com/jmylchreest/go-decluttarr/internal/downloadclient"
+	"github.com/jmylchreest/go-decluttarr/internal/jobs"
 )
 
 // DoneSeedingJob removes completed torrents that have met their seeding goals

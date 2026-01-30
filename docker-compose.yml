@@ -1,9 +1,9 @@
 version: "3.8"
 
 services:
-  go-declutarr:
+  go-decluttarr:
     build: .
-    container_name: go-declutarr
+    container_name: go-decluttarr
     environment:
       # Timezone for scheduler
       - TZ=UTC

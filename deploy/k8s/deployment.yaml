@@ -7,7 +7,7 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: go-declutarr-config
+  name: go-decluttarr-config
   namespace: declutarr
 data:
   config.yaml: |
@@ -140,7 +140,7 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: go-declutarr-secrets
+  name: go-decluttarr-secrets
   namespace: declutarr
 type: Opaque
 stringData:
@@ -155,7 +155,7 @@ stringData:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: go-declutarr-data
+  name: go-decluttarr-data
   namespace: declutarr
 spec:
   accessModes:
@@ -167,25 +167,25 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: go-declutarr
+  name: go-decluttarr
   namespace: declutarr
   labels:
-    app: go-declutarr
+    app: go-decluttarr
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: go-declutarr
+      app: go-decluttarr
   template:
     metadata:
       labels:
-        app: go-declutarr
+        app: go-decluttarr
     spec:
       containers:
-        - name: go-declutarr
-          image: ghcr.io/jmylchreest/go-declutarr:latest
+        - name: go-decluttarr
+          image: ghcr.io/jmylchreest/go-decluttarr:latest
           imagePullPolicy: Always
           args:
             - --config
@@ -194,7 +194,7 @@ spec:
             - /data
           envFrom:
             - secretRef:
-                name: go-declutarr-secrets
+                name: go-decluttarr-secrets
           volumeMounts:
             - name: config
               mountPath: /config
@@ -219,10 +219,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: go-declutarr-config
+            name: go-decluttarr-config
         - name: data
           persistentVolumeClaim:
-            claimName: go-declutarr-data
+            claimName: go-decluttarr-data
       securityContext:
         seccompProfile:
           type: RuntimeDefault

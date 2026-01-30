@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jmylchreest/go-declutarr/internal/arrapi"
-	"github.com/jmylchreest/go-declutarr/internal/config"
-	"github.com/jmylchreest/go-declutarr/internal/jobs"
+	"github.com/jmylchreest/go-decluttarr/internal/arrapi"
+	"github.com/jmylchreest/go-decluttarr/internal/config"
+	"github.com/jmylchreest/go-decluttarr/internal/jobs"
 )
 
 // UnmetCutoffJob searches for items that don't meet quality cutoff

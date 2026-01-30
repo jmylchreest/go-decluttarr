@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jmylchreest/go-declutarr/pkg/httpclient"
+	"github.com/jmylchreest/go-decluttarr/pkg/httpclient"
 )
 
 // SABnzbdClient implements the Client interface for SABnzbd

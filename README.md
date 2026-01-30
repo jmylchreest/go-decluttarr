@@ -1,4 +1,4 @@
-# go-declutarr
+# go-decluttarr
 
 A Go port of [decluttarr](https://github.com/ManiMatter/decluttarr) - automatically clean up your *arr download queues.
 
@@ -19,13 +19,13 @@ A Go port of [decluttarr](https://github.com/ManiMatter/decluttarr) - automatica
 ### Docker (Recommended)
 
 ```bash
-docker pull ghcr.io/jmylchreest/go-declutarr:latest
+docker pull ghcr.io/jmylchreest/go-decluttarr:latest
 ```
 
 ### From Source
 
 ```bash
-go install github.com/jmylchreest/go-declutarr/cmd/go-declutarr@latest
+go install github.com/jmylchreest/go-decluttarr/cmd/go-decluttarr@latest
 ```
 
 ## Configuration
@@ -95,13 +95,13 @@ download_clients:
 
 ```bash
 # Run with config file
-go-declutarr --config config.yaml
+go-decluttarr --config config.yaml
 
 # Specify data directory for strike persistence
-go-declutarr --config config.yaml --data /data
+go-decluttarr --config config.yaml --data /data
 
 # Check version
-go-declutarr --version
+go-decluttarr --version
 ```
 
 ## Logging
@@ -117,18 +117,18 @@ For pretty output locally, pipe through [humanlog](https://github.com/humanlogio
 
 ```bash
 # Local development
-go-declutarr --config config.yaml 2>&1 | humanlog
+go-decluttarr --config config.yaml 2>&1 | humanlog
 
 # Kubernetes
-kubectl logs -f deploy/go-declutarr | humanlog
+kubectl logs -f deploy/go-decluttarr | humanlog
 ```
 
 ## Docker Compose
 
 ```yaml
 services:
-  go-declutarr:
-    image: ghcr.io/jmylchreest/go-declutarr:latest
+  go-decluttarr:
+    image: ghcr.io/jmylchreest/go-decluttarr:latest
     environment:
       - LOG_LEVEL=info
       - LOG_FORMAT=json
@@ -168,7 +168,7 @@ See `deploy/k8s/deployment.yaml` for a complete Kubernetes deployment with Confi
 
 ## Tracker Handling
 
-go-declutarr can handle private and public tracker torrents differently:
+go-decluttarr can handle private and public tracker torrents differently:
 
 | Mode | Behavior |
 |------|----------|

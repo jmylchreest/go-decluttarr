@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/jmylchreest/go-declutarr/internal/config"
-	"github.com/jmylchreest/go-declutarr/internal/jobs"
+	"github.com/jmylchreest/go-decluttarr/internal/config"
+	"github.com/jmylchreest/go-decluttarr/internal/jobs"
 )
 
 // OrphansJob removes orphaned downloads that aren't tracked by any *arr instance

@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/jmylchreest/go-declutarr/pkg/httpclient"
+	"github.com/jmylchreest/go-decluttarr/pkg/httpclient"
 )
 
 // NZBGetClient implements the DownloadClient interface for NZBGet

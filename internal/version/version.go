@@ -1,8 +1,8 @@
-// Package version provides build-time version information for go-declutarr.
+// Package version provides build-time version information for go-decluttarr.
 //
 // Variables in this package are set at build time using ldflags:
 //
-//	go build -ldflags "-X github.com/jmylchreest/go-declutarr/internal/version.Version=1.0.0 ..."
+//	go build -ldflags "-X github.com/jmylchreest/go-decluttarr/internal/version.Version=1.0.0 ..."
 package version
 
 import (

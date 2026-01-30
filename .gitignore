@@ -1,5 +1,5 @@
 # Binaries (in root only)
-/go-declutarr
+/go-decluttarr
 *.exe
 *.dll
 *.so

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmylchreest/go-declutarr/pkg/httpclient"
+	"github.com/jmylchreest/go-decluttarr/pkg/httpclient"
 )
 
 // Client provides base functionality for all *arr API clients

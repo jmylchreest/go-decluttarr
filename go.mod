@@ -1,4 +1,4 @@
-module github.com/jmylchreest/go-declutarr
+module github.com/jmylchreest/go-decluttarr
 
 go 1.23.0
 

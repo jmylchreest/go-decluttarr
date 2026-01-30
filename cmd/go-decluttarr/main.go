@@ -11,13 +11,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jmylchreest/go-declutarr/internal/arrapi"
-	"github.com/jmylchreest/go-declutarr/internal/config"
-	"github.com/jmylchreest/go-declutarr/internal/downloadclient"
-	"github.com/jmylchreest/go-declutarr/internal/jobs"
-	"github.com/jmylchreest/go-declutarr/internal/jobs/removal"
-	"github.com/jmylchreest/go-declutarr/internal/logging"
-	"github.com/jmylchreest/go-declutarr/internal/version"
+	"github.com/jmylchreest/go-decluttarr/internal/arrapi"
+	"github.com/jmylchreest/go-decluttarr/internal/config"
+	"github.com/jmylchreest/go-decluttarr/internal/downloadclient"
+	"github.com/jmylchreest/go-decluttarr/internal/jobs"
+	"github.com/jmylchreest/go-decluttarr/internal/jobs/removal"
+	"github.com/jmylchreest/go-decluttarr/internal/logging"
+	"github.com/jmylchreest/go-decluttarr/internal/version"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 
 	if *showVersion {
 		info := version.Get()
-		fmt.Printf("go-declutarr %s\n", info.Version)
+		fmt.Printf("go-decluttarr %s\n", info.Version)
 		fmt.Printf("  Commit:     %s\n", info.Commit)
 		fmt.Printf("  Built:      %s\n", info.BuildDate)
 		fmt.Printf("  Go version: %s\n", info.GoVersion)
@@ -55,7 +55,7 @@ func main() {
 	}
 	logger := logging.Setup(logLevel, logFormat)
 	info := version.Get()
-	logger.Info("starting go-declutarr",
+	logger.Info("starting go-decluttarr",
 		"version", info.Version,
 		"commit", info.Commit,
 		"built", info.BuildDate,
