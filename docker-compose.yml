@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  go-declutarr:
+    build: .
+    container_name: go-declutarr
+    environment:
+      # Timezone for scheduler
+      - TZ=UTC
+      # Override log level (debug, info, warn, error)
+      - DECLUTARR_GENERAL_LOG_LEVEL=info
+    volumes:
+      # Mount your configuration file
+      - ./config.yaml:/app/config.yaml:ro
+    restart: unless-stopped
+    # Uncomment to limit resources
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 256M

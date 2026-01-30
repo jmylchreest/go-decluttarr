@@ -1,0 +1,220 @@
+# go-declutarr Configuration Example
+# All durations support: s (seconds), m (minutes), h (hours), d (days)
+# Example: 30s, 5m, 2h, 1d
+
+# ============================================================================
+# GENERAL SETTINGS
+# ============================================================================
+general:
+  # Logging level: debug, info, warn, error
+  log_level: info
+
+  # Test run mode - logs actions but doesn't execute removals
+  test_run: false
+
+  # How often to run all enabled jobs
+  timer: 5m
+
+  # Verify SSL certificates for API requests
+  ssl_verification: true
+
+  # Timeout for API requests
+  request_timeout: 30s
+
+  # How to handle torrents from private trackers
+  # Options: pause, ignore
+  private_tracker_handling: pause
+
+  # How to handle torrents from public trackers
+  # Options: remove, ignore
+  public_tracker_handling: remove
+
+# ============================================================================
+# JOB DEFAULTS
+# ============================================================================
+# These settings apply to all jobs unless overridden per-job
+job_defaults:
+  # Number of consecutive strikes before action is taken
+  max_strikes: 3
+
+  # Skip processing stalled torrents
+  no_stalled: false
+
+  # Skip processing slow torrents
+  no_slow: false
+
+  # Skip processing active (downloading) torrents
+  no_active: true
+
+  # Skip processing uploading (seeding) torrents
+  no_uploading: false
+
+  # Maximum import attempts before considering failed
+  permitted_attempts: 5
+
+  # Minimum download speed in MB/s before considered slow
+  min_download_speed: 0.1
+
+  # Minimum time remaining estimate before removal
+  min_time_left: 1h
+
+  # Minimum ratio for seeding torrents
+  min_ratio: 0.0
+
+  # Maximum ratio before removal (0 = unlimited)
+  max_ratio: 0.0
+
+  # Maximum seed time before removal (0 = unlimited)
+  max_seed_time: 0s
+
+  # Maximum number of active downloads allowed
+  max_active_downloads: 0
+
+  # Free space threshold in bytes (0 = disabled)
+  free_space_threshold: 0
+
+  # Apply actions to imported torrents
+  apply_imported_action: true
+
+  # Apply actions to torrents not imported
+  apply_not_imported: false
+
+  # Use tag filtering for jobs
+  apply_tags: false
+
+# ============================================================================
+# INDIVIDUAL JOB CONFIGURATIONS
+# ============================================================================
+jobs:
+  # Remove stalled downloads
+  remove_stalled:
+    enabled: true
+    max_strikes: 3
+    no_stalled: false
+
+  # Remove slow downloads
+  remove_slow:
+    enabled: true
+    max_strikes: 5
+    min_download_speed: 0.1
+    no_slow: false
+
+  # Remove downloads that failed to import
+  remove_failed_imports:
+    enabled: true
+    permitted_attempts: 5
+
+  # Remove downloads for unmonitored content
+  remove_unmonitored:
+    enabled: false
+
+  # Remove orphaned downloads (no matching item in *arr)
+  remove_orphans:
+    enabled: false
+
+  # Remove downloads with missing files
+  remove_missing_files:
+    enabled: false
+
+  # Tag orphaned downloads instead of removing
+  tag_orphans:
+    enabled: false
+    tags_to_apply:
+      - orphan
+
+  # Remove downloads with metadata failures
+  remove_metadata_failed:
+    enabled: false
+
+  # Enforce seeding limits (ratio/time)
+  enforce_seeding_limits:
+    enabled: false
+    max_ratio: 2.0
+    max_seed_time: 168h  # 7 days
+
+  # Manage free space by removing oldest seeded torrents
+  manage_free_space:
+    enabled: false
+    free_space_threshold: 10737418240  # 10GB in bytes
+
+  # Remove duplicate downloads for the same content
+  remove_duplicate_downloads:
+    enabled: false
+
+# ============================================================================
+# *ARR INSTANCES
+# ============================================================================
+instances:
+  # Sonarr instances
+  sonarr:
+    - name: sonarr-main
+      url: http://sonarr:8989
+      api_key: your-sonarr-api-key
+      enabled: true
+      # Optional: Enable only specific jobs for this instance
+      # enabled_jobs:
+      #   - remove_stalled
+      #   - remove_slow
+      # Optional: Disable specific jobs for this instance
+      # disabled_jobs:
+      #   - remove_orphans
+      # Optional: Protect torrents with these tags from removal
+      # protected_tags:
+      #   - keep
+      # Optional: Only process torrents with these tags
+      # only_tags:
+      #   - monitored
+      # Optional: Ignore torrents with these tags
+      # ignore_tags:
+      #   - manual
+      # Optional: Priority order for download clients
+      # download_client_priority:
+      #   - qbittorrent-main
+
+  # Radarr instances
+  radarr:
+    - name: radarr-main
+      url: http://radarr:7878
+      api_key: your-radarr-api-key
+      enabled: true
+
+  # Lidarr instances
+  lidarr:
+    - name: lidarr-main
+      url: http://lidarr:8686
+      api_key: your-lidarr-api-key
+      enabled: false
+
+  # Readarr instances
+  readarr:
+    - name: readarr-main
+      url: http://readarr:8787
+      api_key: your-readarr-api-key
+      enabled: false
+
+# ============================================================================
+# DOWNLOAD CLIENTS
+# ============================================================================
+download_clients:
+  # qBittorrent clients
+  qbittorrent:
+    - name: qbittorrent-main
+      url: http://qbittorrent:8080
+      username: admin
+      password: adminadmin
+      enabled: true
+
+  # SABnzbd clients
+  sabnzbd:
+    - name: sabnzbd-main
+      url: http://sabnzbd:8080
+      api_key: your-sabnzbd-api-key
+      enabled: false
+
+  # NZBGet clients
+  nzbget:
+    - name: nzbget-main
+      url: http://nzbget:6789
+      username: nzbget
+      password: tegbzn6789
+      enabled: false

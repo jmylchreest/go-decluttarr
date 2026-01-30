@@ -1,0 +1,228 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: declutarr
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: go-declutarr-config
+  namespace: declutarr
+data:
+  config.yaml: |
+    # ==========================================================================
+    # GENERAL SETTINGS
+    # ==========================================================================
+    general:
+      # Logging: debug, info, warn, error
+      log_level: info
+
+      # Test mode - logs but doesn't remove anything
+      test_run: false
+
+      # How often to run all jobs (supports: 30s, 5m, 1h, etc.)
+      timer: 10m
+
+      # SSL certificate verification
+      ssl_verification: true
+
+      # API request timeout
+      request_timeout: 30s
+
+      # Private tracker torrents: pause or ignore
+      private_tracker_handling: pause
+
+      # Public tracker torrents: remove or ignore
+      public_tracker_handling: remove
+
+    # ==========================================================================
+    # JOB DEFAULTS
+    # ==========================================================================
+    job_defaults:
+      # Strikes needed before removal (prevents false positives)
+      max_strikes: 3
+
+      # Skip stalled torrents
+      no_stalled: false
+
+      # Skip slow torrents
+      no_slow: false
+
+      # Skip actively downloading torrents
+      no_active: true
+
+      # Skip seeding/uploading torrents
+      no_uploading: false
+
+      # Max import attempts before considered failed
+      permitted_attempts: 5
+
+      # Minimum speed in MB/s (below = slow)
+      min_download_speed: 0.1
+
+    # ==========================================================================
+    # JOBS
+    # ==========================================================================
+    jobs:
+      remove_stalled:
+        enabled: true
+        max_strikes: 3
+
+      remove_slow:
+        enabled: true
+        max_strikes: 5
+        min_download_speed: 0.1
+
+      remove_failed_imports:
+        enabled: true
+        permitted_attempts: 5
+
+      remove_failed_downloads:
+        enabled: true
+
+      remove_orphans:
+        enabled: true
+        max_strikes: 3
+
+      remove_missing_files:
+        enabled: true
+
+      remove_unmonitored:
+        enabled: true
+
+      remove_bad_files:
+        enabled: true
+
+      remove_metadata_failed:
+        enabled: false
+
+    # ==========================================================================
+    # ARR INSTANCES
+    # Note: API keys should come from secrets (see env vars below)
+    # ==========================================================================
+    instances:
+      sonarr:
+        - name: sonarr
+          url: https://sonarr.example.com
+          api_key: "${SONARR_API_KEY}"
+          enabled: true
+
+      radarr:
+        - name: radarr
+          url: https://radarr.example.com
+          api_key: "${RADARR_API_KEY}"
+          enabled: true
+
+      lidarr:
+        - name: lidarr
+          url: https://lidarr.example.com
+          api_key: "${LIDARR_API_KEY}"
+          enabled: true
+
+      readarr:
+        - name: readarr
+          url: https://readarr.example.com
+          api_key: "${READARR_API_KEY}"
+          enabled: true
+
+    # ==========================================================================
+    # DOWNLOAD CLIENTS
+    # ==========================================================================
+    download_clients:
+      qbittorrent:
+        - name: qbittorrent
+          url: https://qbit.example.com
+          username: "${QBIT_USERNAME}"
+          password: "${QBIT_PASSWORD}"
+          enabled: true
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: go-declutarr-secrets
+  namespace: declutarr
+type: Opaque
+stringData:
+  # Replace these with your actual values or use sealed-secrets/external-secrets
+  SONARR_API_KEY: "your-sonarr-api-key"
+  RADARR_API_KEY: "your-radarr-api-key"
+  LIDARR_API_KEY: "your-lidarr-api-key"
+  READARR_API_KEY: "your-readarr-api-key"
+  QBIT_USERNAME: "admin"
+  QBIT_PASSWORD: "your-qbit-password"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: go-declutarr-data
+  namespace: declutarr
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-declutarr
+  namespace: declutarr
+  labels:
+    app: go-declutarr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: go-declutarr
+  template:
+    metadata:
+      labels:
+        app: go-declutarr
+    spec:
+      containers:
+        - name: go-declutarr
+          image: ghcr.io/jmylchreest/go-declutarr:latest
+          imagePullPolicy: Always
+          args:
+            - --config
+            - /config/config.yaml
+            - --data
+            - /data
+          envFrom:
+            - secretRef:
+                name: go-declutarr-secrets
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: config
+          configMap:
+            name: go-declutarr-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: go-declutarr-data
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault

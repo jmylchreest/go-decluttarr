@@ -1,0 +1,38 @@
+# Binaries (in root only)
+/go-declutarr
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.html
+
+# Config files with secrets (not config.example.yaml)
+config.yaml
+config.yml
+*.local.yaml
+*.local.yml
+
+# Data directory (strikes persistence)
+data/
+
+# OMC state
+.omc/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
