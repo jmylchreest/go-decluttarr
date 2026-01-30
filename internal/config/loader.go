@@ -17,14 +17,14 @@ func Load(configPath string) (*Config, error) {
 	setDefaults(v)
 
 	// Configure viper for env vars
-	v.SetEnvPrefix("DECLUTARR")
+	v.SetEnvPrefix("DECLUTTARR")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
 	// Determine config file path
 	if configPath == "" {
-		// Check DECLUTARR_CONFIG env var
-		configPath = os.Getenv("DECLUTARR_CONFIG")
+		// Check DECLUTTARR_CONFIG env var
+		configPath = os.Getenv("DECLUTTARR_CONFIG")
 	}
 	if configPath == "" {
 		// Try default locations

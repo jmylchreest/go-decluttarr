@@ -2,13 +2,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: declutarr
+  name: decluttarr
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: go-decluttarr-config
-  namespace: declutarr
+  namespace: decluttarr
 data:
   config.yaml: |
     # ==========================================================================
@@ -141,7 +141,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: go-decluttarr-secrets
-  namespace: declutarr
+  namespace: decluttarr
 type: Opaque
 stringData:
   # Replace these with your actual values or use sealed-secrets/external-secrets
@@ -156,7 +156,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: go-decluttarr-data
-  namespace: declutarr
+  namespace: decluttarr
 spec:
   accessModes:
     - ReadWriteOnce
@@ -168,7 +168,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: go-decluttarr
-  namespace: declutarr
+  namespace: decluttarr
   labels:
     app: go-decluttarr
 spec:
