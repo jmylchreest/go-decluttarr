@@ -37,11 +37,23 @@ func Load(configPath string) (*Config, error) {
 		}
 	}
 
-	// Read config file if found
+	// Read config file if found, expanding environment variables
 	if configPath != "" {
-		v.SetConfigFile(configPath)
-		if err := v.ReadInConfig(); err != nil {
+		// Read file content
+		content, err := os.ReadFile(configPath)
+		if err != nil {
 			return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
+		}
+
+		// Expand environment variables in the config content
+		expandedContent := os.ExpandEnv(string(content))
+
+		// Set config type based on file extension
+		v.SetConfigType("yaml")
+
+		// Read expanded content
+		if err := v.ReadConfig(strings.NewReader(expandedContent)); err != nil {
+			return nil, fmt.Errorf("failed to parse config file %s: %w", configPath, err)
 		}
 	}
 	// If no file found, continue with defaults and env vars
