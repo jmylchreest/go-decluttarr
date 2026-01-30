@@ -374,6 +374,190 @@ func (c *QBittorrentClient) ResumeTorrent(ctx context.Context, hash string) erro
 	return nil
 }
 
+// GetTrackers retrieves the tracker list for a torrent
+func (c *QBittorrentClient) GetTrackers(ctx context.Context, hash string) ([]TrackerInfo, error) {
+	if c.sid == "" {
+		if err := c.Login(ctx); err != nil {
+			return nil, fmt.Errorf("authentication required: %w", err)
+		}
+	}
+
+	apiURL := c.baseURL + "/api/v2/torrents/trackers?hash=" + hash
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+
+	resp, err := c.http.Do(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("execute request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusForbidden {
+		c.sid = ""
+		return c.GetTrackers(ctx, hash)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var trackers []TrackerInfo
+	if err := c.http.DecodeJSON(resp, &trackers); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	return trackers, nil
+}
+
+// IsPrivateTracker checks if a torrent uses a private tracker
+func (c *QBittorrentClient) IsPrivateTracker(ctx context.Context, hash string) (bool, error) {
+	props, err := c.GetTorrentProperties(ctx, hash)
+	if err != nil {
+		return false, fmt.Errorf("get torrent properties: %w", err)
+	}
+
+	return props.IsPrivate, nil
+}
+
+// AddTags adds tags to a torrent
+func (c *QBittorrentClient) AddTags(ctx context.Context, hash string, tags []string) error {
+	if c.sid == "" {
+		if err := c.Login(ctx); err != nil {
+			return fmt.Errorf("authentication required: %w", err)
+		}
+	}
+
+	if len(tags) == 0 {
+		return nil
+	}
+
+	apiURL := c.baseURL + "/api/v2/torrents/addTags"
+
+	data := url.Values{}
+	data.Set("hashes", hash)
+	data.Set("tags", strings.Join(tags, ","))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+
+	resp, err := c.http.Do(ctx, req)
+	if err != nil {
+		return fmt.Errorf("execute request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusForbidden {
+		c.sid = ""
+		return c.AddTags(ctx, hash, tags)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	c.logger.DebugContext(ctx, "added tags to torrent", "hash", hash, "tags", tags)
+	return nil
+}
+
+// RemoveTags removes tags from a torrent
+func (c *QBittorrentClient) RemoveTags(ctx context.Context, hash string, tags []string) error {
+	if c.sid == "" {
+		if err := c.Login(ctx); err != nil {
+			return fmt.Errorf("authentication required: %w", err)
+		}
+	}
+
+	if len(tags) == 0 {
+		return nil
+	}
+
+	apiURL := c.baseURL + "/api/v2/torrents/removeTags"
+
+	data := url.Values{}
+	data.Set("hashes", hash)
+	data.Set("tags", strings.Join(tags, ","))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+
+	resp, err := c.http.Do(ctx, req)
+	if err != nil {
+		return fmt.Errorf("execute request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusForbidden {
+		c.sid = ""
+		return c.RemoveTags(ctx, hash, tags)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	c.logger.DebugContext(ctx, "removed tags from torrent", "hash", hash, "tags", tags)
+	return nil
+}
+
+// GetTorrentProperties retrieves detailed properties for a torrent
+func (c *QBittorrentClient) GetTorrentProperties(ctx context.Context, hash string) (*TorrentProperties, error) {
+	if c.sid == "" {
+		if err := c.Login(ctx); err != nil {
+			return nil, fmt.Errorf("authentication required: %w", err)
+		}
+	}
+
+	apiURL := c.baseURL + "/api/v2/torrents/properties?hash=" + hash
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+
+	resp, err := c.http.Do(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("execute request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusForbidden {
+		c.sid = ""
+		return c.GetTorrentProperties(ctx, hash)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var props TorrentProperties
+	if err := c.http.DecodeJSON(resp, &props); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	return &props, nil
+}
+
 // convertTorrent converts qBittorrent API response to our Torrent type
 func (c *QBittorrentClient) convertTorrent(qt *qBitTorrentInfo) Torrent {
 	torrent := Torrent{
@@ -412,8 +596,8 @@ func (c *QBittorrentClient) convertTorrent(qt *qBitTorrentInfo) Torrent {
 		torrent.Trackers = []string{qt.TrackerHost}
 	}
 
-	// Determine if private based on magnet URI or tracker
-	// This is a simplified check - in reality, would need to check torrent metadata
+	// IsPrivate will be determined by calling GetTorrentProperties if needed
+	// Setting to false as default for backward compatibility
 	torrent.IsPrivate = false
 
 	return torrent

@@ -1,5 +1,7 @@
 package arrapi
 
+import "time"
+
 // SystemStatus represents the *arr application status
 type SystemStatus struct {
 	AppName                 string `json:"appName"`
@@ -46,9 +48,10 @@ type CutoffUnmetResponse struct {
 // This is used for both Sonarr (episodes) and Radarr (movies)
 type CutoffUnmetItem struct {
 	// Common fields
-	ID        int    `json:"id"`
-	Title     string `json:"title"`
-	Monitored bool   `json:"monitored"`
+	ID             int        `json:"id"`
+	Title          string     `json:"title"`
+	Monitored      bool       `json:"monitored"`
+	LastSearchTime *time.Time `json:"lastSearchTime,omitempty"`
 
 	// Sonarr-specific fields
 	SeriesID      *int `json:"seriesId,omitempty"`

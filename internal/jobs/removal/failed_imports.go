@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 
 	"github.com/jmylchreest/go-declutarr/internal/arrapi"
@@ -79,7 +80,7 @@ func (j *FailedImportsJob) isFailedImport(item arrapi.QueueItem) bool {
 	// Primary indicator: TrackedDownloadState == "importFailed"
 	// This means the download completed successfully but import failed
 	if item.TrackedDownloadState == "importFailed" {
-		return true
+		return j.matchesMessagePatterns(item)
 	}
 
 	// Check for import-specific failures in status messages
@@ -88,19 +89,19 @@ func (j *FailedImportsJob) isFailedImport(item arrapi.QueueItem) bool {
 
 		// Common import failure indicators
 		if strings.Contains(title, "import") &&
-		   (strings.Contains(title, "failed") ||
-		    strings.Contains(title, "error") ||
-		    strings.Contains(title, "unable")) {
-			return true
+			(strings.Contains(title, "failed") ||
+				strings.Contains(title, "error") ||
+				strings.Contains(title, "unable")) {
+			return j.matchesMessagePatterns(item)
 		}
 
 		// Specific import failure messages
 		if msg.Title == "Import failed" ||
-		   msg.Title == "No files found are eligible for import" ||
-		   msg.Title == "Not a valid video file" ||
-		   msg.Title == "Not an upgrade for existing file" ||
-		   msg.Title == "Sample" {
-			return true
+			msg.Title == "No files found are eligible for import" ||
+			msg.Title == "Not a valid video file" ||
+			msg.Title == "Not an upgrade for existing file" ||
+			msg.Title == "Sample" {
+			return j.matchesMessagePatterns(item)
 		}
 	}
 
@@ -108,11 +109,109 @@ func (j *FailedImportsJob) isFailedImport(item arrapi.QueueItem) bool {
 	if item.ErrorMessage != "" {
 		errorLower := strings.ToLower(item.ErrorMessage)
 		if strings.Contains(errorLower, "import") && strings.Contains(errorLower, "failed") {
+			return j.matchesMessagePatterns(item)
+		}
+	}
+
+	return false
+}
+
+// matchesMessagePatterns checks if the item's messages match configured patterns
+// If no patterns are configured, returns true (matches everything)
+// If patterns are configured, returns true only if at least one pattern matches
+func (j *FailedImportsJob) matchesMessagePatterns(item arrapi.QueueItem) bool {
+	// If no patterns configured, match everything (backward compatible)
+	if len(j.cfg.MessagePatterns) == 0 {
+		return true
+	}
+
+	// Check all status messages
+	for _, statusMsg := range item.StatusMessages {
+		if matchesPattern(statusMsg.Title, j.cfg.MessagePatterns) {
+			return true
+		}
+		for _, msg := range statusMsg.Messages {
+			if matchesPattern(msg, j.cfg.MessagePatterns) {
+				return true
+			}
+		}
+	}
+
+	// Check error message
+	if item.ErrorMessage != "" {
+		if matchesPattern(item.ErrorMessage, j.cfg.MessagePatterns) {
 			return true
 		}
 	}
 
 	return false
+}
+
+// matchesPattern checks if a message matches any of the configured patterns
+// Supports glob/wildcard matching using filepath.Match
+func matchesPattern(message string, patterns []string) bool {
+	if len(patterns) == 0 {
+		return false
+	}
+
+	messageLower := strings.ToLower(message)
+
+	for _, pattern := range patterns {
+		patternLower := strings.ToLower(pattern)
+
+		// Try filepath.Match for standard glob patterns
+		if matched, err := filepath.Match(patternLower, messageLower); err == nil && matched {
+			return true
+		}
+
+		// Fallback to simple wildcard matching for patterns with *
+		if strings.Contains(patternLower, "*") {
+			if wildcardMatch(messageLower, patternLower) {
+				return true
+			}
+		}
+
+		// Exact match fallback
+		if messageLower == patternLower {
+			return true
+		}
+	}
+
+	return false
+}
+
+// wildcardMatch performs simple wildcard matching
+// Supports patterns like "*text*", "prefix*", "*suffix"
+func wildcardMatch(text, pattern string) bool {
+	parts := strings.Split(pattern, "*")
+	if len(parts) == 1 {
+		return text == pattern
+	}
+
+	// Check prefix
+	if parts[0] != "" && !strings.HasPrefix(text, parts[0]) {
+		return false
+	}
+
+	// Check suffix
+	if parts[len(parts)-1] != "" && !strings.HasSuffix(text, parts[len(parts)-1]) {
+		return false
+	}
+
+	// Check middle parts
+	pos := len(parts[0])
+	for i := 1; i < len(parts)-1; i++ {
+		if parts[i] == "" {
+			continue
+		}
+		idx := strings.Index(text[pos:], parts[i])
+		if idx == -1 {
+			return false
+		}
+		pos += idx + len(parts[i])
+	}
+
+	return true
 }
 
 // Run executes the failed imports removal job
@@ -152,6 +251,44 @@ func (j *FailedImportsJob) Run(ctx context.Context) error {
 
 			// Check if max strikes exceeded
 			if strikesHandler.HasExceeded(item.DownloadID, j.maxStrikes) {
+				// Determine removal action based on tracker type and protected tags
+				action := j.manager.GetRemovalAction(ctx, item.DownloadID)
+
+				switch action {
+				case "skip":
+					j.logger.Debug("skipping protected item", "title", item.Title, "download_id", item.DownloadID)
+					continue
+				case "tag":
+					if j.testRun {
+						j.logger.Info("[TEST RUN] would tag failed import as obsolete",
+							"title", item.Title,
+							"download_id", item.DownloadID,
+							"strikes", currentStrikes,
+							"instance", instanceName,
+						)
+					} else {
+						if err := j.manager.ApplyObsoleteTag(ctx, item.DownloadID); err != nil {
+							j.logger.Error("failed to tag as obsolete",
+								"title", item.Title,
+								"download_id", item.DownloadID,
+								"error", err,
+							)
+							continue
+						}
+						j.logger.Info("tagged failed import as obsolete",
+							"title", item.Title,
+							"download_id", item.DownloadID,
+							"strikes", currentStrikes,
+							"instance", instanceName,
+						)
+					}
+					strikesHandler.Reset(item.DownloadID)
+					totalRemoved++ // Count as handled
+					continue
+				case "remove":
+					// Proceed with removal
+				}
+
 				if j.testRun {
 					j.logger.Info("[TEST RUN] would remove failed import",
 						"title", item.Title,

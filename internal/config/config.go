@@ -20,6 +20,9 @@ type GeneralConfig struct {
 	RequestTimeout         time.Duration `mapstructure:"request_timeout"`
 	PrivateTrackerHandling string        `mapstructure:"private_tracker_handling"`
 	PublicTrackerHandling  string        `mapstructure:"public_tracker_handling"`
+	IgnoreDownloadClients  []string      `mapstructure:"ignore_download_clients"`
+	ObsoleteTag            string        `mapstructure:"obsolete_tag"`
+	ProtectedTag           string        `mapstructure:"protected_tag"`
 }
 
 // JobDefaultsConfig contains default settings for all jobs
@@ -44,21 +47,22 @@ type JobDefaultsConfig struct {
 
 // JobsConfig contains individual job configurations
 type JobsConfig struct {
-	RemoveStalled            JobConfig       `mapstructure:"remove_stalled"`
-	RemoveSlow               JobConfig       `mapstructure:"remove_slow"`
-	RemoveFailedImports      JobConfig       `mapstructure:"remove_failed_imports"`
-	RemoveFailedDownloads    JobConfig       `mapstructure:"remove_failed_downloads"`
-	RemoveUnmonitored        JobConfig       `mapstructure:"remove_unmonitored"`
-	RemoveOrphans            JobConfig       `mapstructure:"remove_orphans"`
-	RemoveMissingFiles       JobConfig       `mapstructure:"remove_missing_files"`
-	RemoveBadFiles           JobConfig       `mapstructure:"remove_bad_files"`
-	TagOrphans               JobConfig       `mapstructure:"tag_orphans"`
-	RemoveMetadataFailed     JobConfig       `mapstructure:"remove_metadata_failed"`
-	EnforceSeedingLimits     JobConfig       `mapstructure:"enforce_seeding_limits"`
-	ManageFreeSpace          JobConfig       `mapstructure:"manage_free_space"`
-	RemoveDuplicateDownloads JobConfig       `mapstructure:"remove_duplicate_downloads"`
-	SearchMissing            SearchJobConfig `mapstructure:"search_missing"`
-	SearchUnmetCutoff        SearchJobConfig `mapstructure:"search_unmet_cutoff"`
+	RemoveStalled            JobConfig               `mapstructure:"remove_stalled"`
+	RemoveSlow               JobConfig               `mapstructure:"remove_slow"`
+	RemoveFailedImports      JobConfig               `mapstructure:"remove_failed_imports"`
+	RemoveFailedDownloads    JobConfig               `mapstructure:"remove_failed_downloads"`
+	RemoveUnmonitored        JobConfig               `mapstructure:"remove_unmonitored"`
+	RemoveOrphans            JobConfig               `mapstructure:"remove_orphans"`
+	RemoveMissingFiles       JobConfig               `mapstructure:"remove_missing_files"`
+	RemoveBadFiles           JobConfig               `mapstructure:"remove_bad_files"`
+	TagOrphans               JobConfig               `mapstructure:"tag_orphans"`
+	RemoveMetadataFailed     JobConfig               `mapstructure:"remove_metadata_failed"`
+	EnforceSeedingLimits     JobConfig               `mapstructure:"enforce_seeding_limits"`
+	ManageFreeSpace          JobConfig               `mapstructure:"manage_free_space"`
+	RemoveDuplicateDownloads JobConfig               `mapstructure:"remove_duplicate_downloads"`
+	RemoveDoneSeeding        RemoveDoneSeedingConfig `mapstructure:"remove_done_seeding"`
+	SearchMissing            SearchJobConfig         `mapstructure:"search_missing"`
+	SearchUnmetCutoff        SearchJobConfig         `mapstructure:"search_unmet_cutoff"`
 }
 
 // JobConfig represents configuration for a specific job
@@ -81,6 +85,8 @@ type JobConfig struct {
 	ApplyNotImported    *bool         `mapstructure:"apply_not_imported"`
 	ApplyTags           *bool         `mapstructure:"apply_tags"`
 	TagsToApply         []string      `mapstructure:"tags_to_apply"`
+	MessagePatterns     []string      `mapstructure:"message_patterns"`
+	KeepArchives        *bool         `mapstructure:"keep_archives"`
 }
 
 // SearchJobConfig represents configuration for search jobs
@@ -90,12 +96,20 @@ type SearchJobConfig struct {
 	MaxConcurrentSearches  int  `mapstructure:"max_concurrent_searches"`
 }
 
+// RemoveDoneSeedingConfig represents configuration for remove_done_seeding job
+type RemoveDoneSeedingConfig struct {
+	Enabled          bool     `mapstructure:"enabled"`
+	TargetTags       []string `mapstructure:"target_tags"`
+	TargetCategories []string `mapstructure:"target_categories"`
+}
+
 // InstancesConfig contains all *arr instance configurations
 type InstancesConfig struct {
-	Sonarr  []InstanceConfig `mapstructure:"sonarr"`
-	Radarr  []InstanceConfig `mapstructure:"radarr"`
-	Lidarr  []InstanceConfig `mapstructure:"lidarr"`
-	Readarr []InstanceConfig `mapstructure:"readarr"`
+	Sonarr   []InstanceConfig `mapstructure:"sonarr"`
+	Radarr   []InstanceConfig `mapstructure:"radarr"`
+	Lidarr   []InstanceConfig `mapstructure:"lidarr"`
+	Readarr  []InstanceConfig `mapstructure:"readarr"`
+	Whisparr []InstanceConfig `mapstructure:"whisparr"`
 }
 
 // InstanceConfig represents a single *arr instance

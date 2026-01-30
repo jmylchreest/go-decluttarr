@@ -176,11 +176,20 @@ func (j *MissingJob) searchMissingSonarr(ctx context.Context, instanceName strin
 		}
 
 		// Find missing episodes (monitored, no file, aired)
-		var missingEpisodeIDs []int
+		var missingEpisodes []arrapi.Episode
 		for _, ep := range episodes {
 			if ep.Monitored && !ep.HasFile && !ep.AirDateUTC.IsZero() && ep.AirDateUTC.Before(time.Now()) {
-				missingEpisodeIDs = append(missingEpisodeIDs, ep.ID)
+				missingEpisodes = append(missingEpisodes, ep)
 			}
+		}
+
+		// Filter out recently searched episodes
+		eligibleEpisodes := j.filterRecentlySearchedEpisodes(missingEpisodes)
+
+		// Extract episode IDs
+		var missingEpisodeIDs []int
+		for _, ep := range eligibleEpisodes {
+			missingEpisodeIDs = append(missingEpisodeIDs, ep.ID)
 		}
 
 		if len(missingEpisodeIDs) > 0 {
@@ -217,6 +226,74 @@ func (j *MissingJob) searchMissingSonarr(ctx context.Context, instanceName strin
 	return found, searched, nil
 }
 
+// filterRecentlySearchedMovies filters out movies that have been searched within minDays
+func (j *MissingJob) filterRecentlySearchedMovies(movies []arrapi.Movie) []arrapi.Movie {
+	if j.minDaysBetweenSearches <= 0 {
+		return movies
+	}
+
+	now := time.Now()
+	threshold := now.AddDate(0, 0, -j.minDaysBetweenSearches)
+
+	var eligible []arrapi.Movie
+	for _, movie := range movies {
+		if movie.LastSearchTime == nil {
+			// Never searched, eligible
+			eligible = append(eligible, movie)
+			continue
+		}
+
+		if movie.LastSearchTime.Before(threshold) {
+			// Last search was more than minDays ago
+			eligible = append(eligible, movie)
+		} else {
+			daysAgo := int(now.Sub(*movie.LastSearchTime).Hours() / 24)
+			j.logger.Debug("skipping recently searched movie",
+				"movie_id", movie.ID,
+				"title", movie.Title,
+				"last_search", movie.LastSearchTime.Format(time.RFC3339),
+				"days_ago", daysAgo,
+				"min_days", j.minDaysBetweenSearches,
+			)
+		}
+	}
+	return eligible
+}
+
+// filterRecentlySearchedEpisodes filters out episodes that have been searched within minDays
+func (j *MissingJob) filterRecentlySearchedEpisodes(episodes []arrapi.Episode) []arrapi.Episode {
+	if j.minDaysBetweenSearches <= 0 {
+		return episodes
+	}
+
+	now := time.Now()
+	threshold := now.AddDate(0, 0, -j.minDaysBetweenSearches)
+
+	var eligible []arrapi.Episode
+	for _, ep := range episodes {
+		if ep.LastSearchTime == nil {
+			// Never searched, eligible
+			eligible = append(eligible, ep)
+			continue
+		}
+
+		if ep.LastSearchTime.Before(threshold) {
+			// Last search was more than minDays ago
+			eligible = append(eligible, ep)
+		} else {
+			daysAgo := int(now.Sub(*ep.LastSearchTime).Hours() / 24)
+			j.logger.Debug("skipping recently searched episode",
+				"episode_id", ep.ID,
+				"title", ep.Title,
+				"last_search", ep.LastSearchTime.Format(time.RFC3339),
+				"days_ago", daysAgo,
+				"min_days", j.minDaysBetweenSearches,
+			)
+		}
+	}
+	return eligible
+}
+
 // searchMissingRadarr searches for missing movies in a Radarr instance
 func (j *MissingJob) searchMissingRadarr(ctx context.Context, instanceName string, client *arrapi.RadarrClient, searchSem chan struct{}) (found int, searched int, err error) {
 	logger := j.logger.With("instance", instanceName, "type", "radarr")
@@ -230,6 +307,8 @@ func (j *MissingJob) searchMissingRadarr(ctx context.Context, instanceName strin
 
 	logger.Debug("retrieved movies", "count", len(allMovies))
 
+	// Filter missing movies (monitored, no file, available)
+	var missingMovies []arrapi.Movie
 	for _, movie := range allMovies {
 		if !movie.Monitored || movie.HasFile {
 			continue
@@ -240,6 +319,13 @@ func (j *MissingJob) searchMissingRadarr(ctx context.Context, instanceName strin
 			continue
 		}
 
+		missingMovies = append(missingMovies, movie)
+	}
+
+	// Filter out recently searched movies
+	eligibleMovies := j.filterRecentlySearchedMovies(missingMovies)
+
+	for _, movie := range eligibleMovies {
 		found++
 		logger.Debug("found missing movie", "title", movie.Title, "year", movie.Year)
 

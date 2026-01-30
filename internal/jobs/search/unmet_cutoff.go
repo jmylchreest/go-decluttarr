@@ -100,6 +100,40 @@ func (j *UnmetCutoffJob) Run(ctx context.Context) error {
 	return nil
 }
 
+// filterRecentlySearchedItems filters out items that have been searched within minDays
+func (j *UnmetCutoffJob) filterRecentlySearchedItems(items []arrapi.CutoffUnmetItem) []arrapi.CutoffUnmetItem {
+	if j.minDaysBetweenSearches <= 0 {
+		return items
+	}
+
+	now := time.Now()
+	threshold := now.AddDate(0, 0, -j.minDaysBetweenSearches)
+
+	var eligible []arrapi.CutoffUnmetItem
+	for _, item := range items {
+		if item.LastSearchTime == nil {
+			// Never searched, eligible
+			eligible = append(eligible, item)
+			continue
+		}
+
+		if item.LastSearchTime.Before(threshold) {
+			// Last search was more than minDays ago
+			eligible = append(eligible, item)
+		} else {
+			daysAgo := int(now.Sub(*item.LastSearchTime).Hours() / 24)
+			j.logger.Debug("skipping recently searched item",
+				"item_id", item.ID,
+				"title", item.Title,
+				"last_search", item.LastSearchTime.Format(time.RFC3339),
+				"days_ago", daysAgo,
+				"min_days", j.minDaysBetweenSearches,
+			)
+		}
+	}
+	return eligible
+}
+
 // getAllArrClients retrieves all registered arr clients from the manager
 func (j *UnmetCutoffJob) getAllArrClients() map[string]*arrapi.Client {
 	return j.manager.GetAllArrClients()
@@ -145,9 +179,17 @@ func (j *UnmetCutoffJob) processSonarr(ctx context.Context, instanceName string,
 		"count", len(items))
 	j.lastFound += len(items)
 
+	// Filter out recently searched episodes
+	eligibleItems := j.filterRecentlySearchedItems(items)
+
+	j.logger.Debug("eligible cutoff unmet episodes after filtering",
+		"instance", instanceName,
+		"eligible", len(eligibleItems),
+		"filtered_out", len(items)-len(eligibleItems))
+
 	// Group episodes by series for efficient searching
 	episodesBySeriesAndSeason := make(map[int]map[int][]int)
-	for _, item := range items {
+	for _, item := range eligibleItems {
 		if !item.Monitored {
 			j.logger.Debug("skipping unmonitored episode",
 				"instance", instanceName,
@@ -232,9 +274,17 @@ func (j *UnmetCutoffJob) processRadarr(ctx context.Context, instanceName string,
 		"count", len(items))
 	j.lastFound += len(items)
 
+	// Filter out recently searched movies
+	eligibleItems := j.filterRecentlySearchedItems(items)
+
+	j.logger.Debug("eligible cutoff unmet movies after filtering",
+		"instance", instanceName,
+		"eligible", len(eligibleItems),
+		"filtered_out", len(items)-len(eligibleItems))
+
 	// Search for each movie
 	searchCount := 0
-	for _, item := range items {
+	for _, item := range eligibleItems {
 		if !item.Monitored {
 			j.logger.Debug("skipping unmonitored movie",
 				"instance", instanceName,

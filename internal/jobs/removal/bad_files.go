@@ -78,7 +78,19 @@ var badFileKeywords = []string{
 func (j *BadFilesJob) FindAffected(queue []arrapi.QueueItem) []arrapi.QueueItem {
 	var affected []arrapi.QueueItem
 
+	// Determine if we should keep archives
+	keepArchives := false
+	if j.cfg.KeepArchives != nil {
+		keepArchives = *j.cfg.KeepArchives
+	}
+
 	for _, item := range queue {
+		// Check keep_archives setting
+		if keepArchives && isArchiveFile(item.Title) {
+			j.logger.Debug("skipping archive file", "title", item.Title)
+			continue
+		}
+
 		if j.isBadFile(&item) {
 			affected = append(affected, item)
 		}
@@ -161,6 +173,46 @@ func (j *BadFilesJob) Run(ctx context.Context) error {
 
 			// Check if max strikes exceeded
 			if strikesHandler.HasExceeded(item.DownloadID, j.maxStrikes) {
+				// Determine removal action based on tracker type and protected tags
+				action := j.manager.GetRemovalAction(ctx, item.DownloadID)
+
+				switch action {
+				case "skip":
+					j.logger.Debug("skipping protected item", "title", item.Title, "download_id", item.DownloadID)
+					continue
+				case "tag":
+					if j.testRun {
+						j.logger.Info("[TEST RUN] would tag bad file as obsolete",
+							"title", item.Title,
+							"download_id", item.DownloadID,
+							"strikes", currentStrikes,
+							"reason", reason,
+							"instance", instanceName,
+						)
+					} else {
+						if err := j.manager.ApplyObsoleteTag(ctx, item.DownloadID); err != nil {
+							j.logger.Error("failed to tag as obsolete",
+								"title", item.Title,
+								"download_id", item.DownloadID,
+								"error", err,
+							)
+							continue
+						}
+						j.logger.Info("tagged bad file as obsolete",
+							"title", item.Title,
+							"download_id", item.DownloadID,
+							"strikes", currentStrikes,
+							"reason", reason,
+							"instance", instanceName,
+						)
+					}
+					strikesHandler.Reset(item.DownloadID)
+					totalRemoved++ // Count as handled
+					continue
+				case "remove":
+					// Proceed with removal
+				}
+
 				if j.testRun {
 					j.logger.Info("[TEST RUN] would remove bad file",
 						"title", item.Title,
@@ -255,4 +307,16 @@ func (j *BadFilesJob) Stats() jobs.JobStats {
 		Found:   j.lastFound,
 		Removed: j.lastRemoved,
 	}
+}
+
+// isArchiveFile checks if a filename contains archive extensions
+func isArchiveFile(name string) bool {
+	archiveExts := []string{".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".tar.gz", ".tar.bz2", ".tgz"}
+	nameLower := strings.ToLower(name)
+	for _, ext := range archiveExts {
+		if strings.HasSuffix(nameLower, ext) || strings.Contains(nameLower, ext) {
+			return true
+		}
+	}
+	return false
 }

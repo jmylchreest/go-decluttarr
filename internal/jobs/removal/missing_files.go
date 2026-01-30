@@ -142,6 +142,44 @@ func (j *MissingFilesJob) Run(ctx context.Context) error {
 
 			// Check if max strikes exceeded
 			if strikesHandler.HasExceeded(item.DownloadID, j.maxStrikes) {
+				// Determine removal action based on tracker type and protected tags
+				action := j.manager.GetRemovalAction(ctx, item.DownloadID)
+
+				switch action {
+				case "skip":
+					j.logger.Debug("skipping protected item", "title", item.Title, "download_id", item.DownloadID)
+					continue
+				case "tag":
+					if j.testRun {
+						j.logger.Info("[TEST RUN] would tag item with missing files as obsolete",
+							"title", item.Title,
+							"download_id", item.DownloadID,
+							"strikes", currentStrikes,
+							"instance", instanceName,
+						)
+					} else {
+						if err := j.manager.ApplyObsoleteTag(ctx, item.DownloadID); err != nil {
+							j.logger.Error("failed to tag as obsolete",
+								"title", item.Title,
+								"download_id", item.DownloadID,
+								"error", err,
+							)
+							continue
+						}
+						j.logger.Info("tagged item with missing files as obsolete",
+							"title", item.Title,
+							"download_id", item.DownloadID,
+							"strikes", currentStrikes,
+							"instance", instanceName,
+						)
+					}
+					strikesHandler.Reset(item.DownloadID)
+					totalRemoved++ // Count as handled
+					continue
+				case "remove":
+					// Proceed with removal
+				}
+
 				if j.testRun {
 					j.logger.Info("[TEST RUN] would remove item with missing files",
 						"title", item.Title,

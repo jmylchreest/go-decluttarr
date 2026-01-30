@@ -134,12 +134,52 @@ func (j *UnmonitoredJob) Run(ctx context.Context) error {
 				continue
 			}
 
-			j.logger.Debug("unmonitored item exceeded max strikes, removing",
+			j.logger.Debug("unmonitored item exceeded max strikes",
 				"instance", instanceName,
 				"queue_id", item.ID,
 				"download_id", item.DownloadID,
 				"title", item.Title,
 				"strikes", currentStrikes)
+
+			// Determine removal action based on tracker type and protected tags
+			action := j.manager.GetRemovalAction(ctx, item.DownloadID)
+
+			switch action {
+			case "skip":
+				j.logger.Debug("skipping protected item", "title", item.Title, "download_id", item.DownloadID)
+				continue
+			case "tag":
+				if j.testRun {
+					j.logger.Info("[TEST RUN] would tag unmonitored item as obsolete",
+						"instance", instanceName,
+						"queue_id", item.ID,
+						"download_id", item.DownloadID,
+						"title", item.Title,
+						"strikes", currentStrikes,
+					)
+				} else {
+					if err := j.manager.ApplyObsoleteTag(ctx, item.DownloadID); err != nil {
+						j.logger.Error("failed to tag as obsolete",
+							"title", item.Title,
+							"download_id", item.DownloadID,
+							"error", err,
+						)
+						continue
+					}
+					j.logger.Info("tagged unmonitored item as obsolete",
+						"instance", instanceName,
+						"queue_id", item.ID,
+						"download_id", item.DownloadID,
+						"title", item.Title,
+						"strikes", currentStrikes,
+					)
+				}
+				strikesHandler.Reset(item.DownloadID)
+				totalRemoved++ // Count as handled
+				continue
+			case "remove":
+				// Proceed with removal
+			}
 
 			// Remove from queue if not in test run mode
 			if !j.testRun {

@@ -52,16 +52,17 @@ type Statistics struct {
 
 // Episode represents an episode in Sonarr
 type Episode struct {
-	ID              int       `json:"id"`
-	SeriesID        int       `json:"seriesId"`
-	EpisodeFileID   int       `json:"episodeFileId"`
-	SeasonNumber    int       `json:"seasonNumber"`
-	EpisodeNumber   int       `json:"episodeNumber"`
-	Title           string    `json:"title"`
-	AirDate         string    `json:"airDate"`
-	AirDateUTC      time.Time `json:"airDateUtc"`
-	HasFile         bool      `json:"hasFile"`
-	Monitored       bool      `json:"monitored"`
+	ID              int        `json:"id"`
+	SeriesID        int        `json:"seriesId"`
+	EpisodeFileID   int        `json:"episodeFileId"`
+	SeasonNumber    int        `json:"seasonNumber"`
+	EpisodeNumber   int        `json:"episodeNumber"`
+	Title           string     `json:"title"`
+	AirDate         string     `json:"airDate"`
+	AirDateUTC      time.Time  `json:"airDateUtc"`
+	HasFile         bool       `json:"hasFile"`
+	Monitored       bool       `json:"monitored"`
+	LastSearchTime  *time.Time `json:"lastSearchTime,omitempty"`
 }
 
 // CommandBody represents a command request to Sonarr

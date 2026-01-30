@@ -162,6 +162,44 @@ func (j *SlowDownloadJob) Run(ctx context.Context) error {
 				)
 
 				if strikesHandler.HasExceeded(item.DownloadID, j.maxStrikes) {
+					// Determine removal action based on tracker type and protected tags
+					action := j.manager.GetRemovalAction(ctx, item.DownloadID)
+
+					switch action {
+					case "skip":
+						j.logger.Debug("skipping protected item", "title", item.Title, "download_id", item.DownloadID)
+						continue
+					case "tag":
+						if j.testRun {
+							j.logger.Info("[TEST RUN] would tag slow download as obsolete",
+								"title", item.Title,
+								"download_id", item.DownloadID,
+								"speed_bps", speed,
+								"instance", instanceName,
+							)
+						} else {
+							if err := j.manager.ApplyObsoleteTag(ctx, item.DownloadID); err != nil {
+								j.logger.Error("failed to tag as obsolete",
+									"title", item.Title,
+									"download_id", item.DownloadID,
+									"error", err,
+								)
+								continue
+							}
+							j.logger.Info("tagged slow download as obsolete",
+								"title", item.Title,
+								"download_id", item.DownloadID,
+								"speed_bps", speed,
+								"instance", instanceName,
+							)
+						}
+						strikesHandler.Reset(item.DownloadID)
+						totalRemoved++ // Count as handled
+						continue
+					case "remove":
+						// Proceed with removal
+					}
+
 					if j.testRun {
 						j.logger.Info("[TEST RUN] would remove slow download",
 							"title", item.Title,

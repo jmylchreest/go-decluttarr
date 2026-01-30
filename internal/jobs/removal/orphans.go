@@ -140,10 +140,45 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 				continue
 			}
 
-			j.logger.Debug("orphaned torrent exceeded max strikes, removing",
+			j.logger.Debug("orphaned torrent exceeded max strikes",
 				"hash", torrent.Hash,
 				"name", torrent.Name,
 				"strikes", currentStrikes)
+
+			// Determine removal action based on tracker type and protected tags
+			action := j.manager.GetRemovalAction(ctx, torrent.Hash)
+
+			switch action {
+			case "skip":
+				j.logger.Debug("skipping protected orphaned torrent", "name", torrent.Name, "hash", torrent.Hash)
+				continue
+			case "tag":
+				if j.testRun {
+					j.logger.Info("[TEST RUN] would tag orphaned torrent as obsolete",
+						"hash", torrent.Hash,
+						"name", torrent.Name,
+						"strikes", currentStrikes,
+					)
+				} else {
+					if err := j.manager.ApplyObsoleteTag(ctx, torrent.Hash); err != nil {
+						j.logger.Error("failed to tag orphaned torrent as obsolete",
+							"hash", torrent.Hash,
+							"error", err,
+						)
+						continue
+					}
+					j.logger.Info("tagged orphaned torrent as obsolete",
+						"hash", torrent.Hash,
+						"name", torrent.Name,
+						"strikes", currentStrikes,
+					)
+				}
+				strikesHandler.Reset(torrent.Hash)
+				removedCount++ // Count as handled
+				continue
+			case "remove":
+				// Proceed with removal
+			}
 
 			// Remove from download client if not in test run mode
 			if !j.testRun {

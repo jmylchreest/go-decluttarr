@@ -21,20 +21,21 @@ func NewRadarrClient(cfg ClientConfig) *RadarrClient {
 
 // Movie represents a movie in Radarr
 type Movie struct {
-	ID               int       `json:"id"`
-	Title            string    `json:"title"`
-	OriginalTitle    string    `json:"originalTitle"`
-	Year             int       `json:"year"`
-	Status           string    `json:"status"`
-	Overview         string    `json:"overview"`
-	Path             string    `json:"path"`
-	Monitored        bool      `json:"monitored"`
-	Added            time.Time `json:"added"`
-	HasFile          bool      `json:"hasFile"`
-	SizeOnDisk       int64     `json:"sizeOnDisk"`
-	Runtime          int       `json:"runtime"`
-	MinimumAvailability string `json:"minimumAvailability"`
-	IsAvailable      bool      `json:"isAvailable"`
+	ID                  int        `json:"id"`
+	Title               string     `json:"title"`
+	OriginalTitle       string     `json:"originalTitle"`
+	Year                int        `json:"year"`
+	Status              string     `json:"status"`
+	Overview            string     `json:"overview"`
+	Path                string     `json:"path"`
+	Monitored           bool       `json:"monitored"`
+	Added               time.Time  `json:"added"`
+	HasFile             bool       `json:"hasFile"`
+	SizeOnDisk          int64      `json:"sizeOnDisk"`
+	Runtime             int        `json:"runtime"`
+	MinimumAvailability string     `json:"minimumAvailability"`
+	IsAvailable         bool       `json:"isAvailable"`
+	LastSearchTime      *time.Time `json:"lastSearchTime,omitempty"`
 }
 
 // GetMovie retrieves a specific movie by ID

@@ -303,6 +303,116 @@ func (m *Manager) GetAllArrClients() map[string]*arrapi.Client {
 	return result
 }
 
+// GetRemovalAction determines what action to take for a download based on tracker type and protected tags.
+// Returns: "remove", "tag", or "skip"
+func (m *Manager) GetRemovalAction(ctx context.Context, downloadHash string) string {
+	// Step 1: Check if protected tag exists on the torrent
+	torrent, client := m.findTorrentByHash(ctx, downloadHash)
+	if torrent == nil {
+		m.logger.Debug("torrent not found for removal action check", "hash", downloadHash)
+		return "remove" // Default to remove if torrent not found
+	}
+
+	// Check for protected tag
+	if m.cfg.General.ProtectedTag != "" {
+		for _, tag := range torrent.Tags {
+			if tag == m.cfg.General.ProtectedTag {
+				m.logger.Debug("torrent has protected tag, skipping removal",
+					"hash", downloadHash,
+					"tag", m.cfg.General.ProtectedTag)
+				return "skip"
+			}
+		}
+	}
+
+	// Step 2: Check tracker type (private vs public)
+	isPrivate, err := client.IsPrivateTracker(ctx, downloadHash)
+	if err != nil {
+		m.logger.Warn("failed to determine tracker type, defaulting to public handling",
+			"hash", downloadHash,
+			"error", err)
+		isPrivate = false
+	}
+
+	// Step 3: Apply configured handling based on tracker type
+	var handling string
+	if isPrivate {
+		handling = m.cfg.General.PrivateTrackerHandling
+		m.logger.Debug("applying private tracker handling",
+			"hash", downloadHash,
+			"handling", handling)
+	} else {
+		handling = m.cfg.General.PublicTrackerHandling
+		m.logger.Debug("applying public tracker handling",
+			"hash", downloadHash,
+			"handling", handling)
+	}
+
+	// Map handling to action
+	switch handling {
+	case "remove":
+		return "remove"
+	case "skip":
+		return "skip"
+	case "obsolete_tag":
+		return "tag"
+	default:
+		m.logger.Warn("unknown tracker handling type, defaulting to remove",
+			"handling", handling)
+		return "remove"
+	}
+}
+
+// ApplyObsoleteTag adds the obsolete tag to a torrent
+func (m *Manager) ApplyObsoleteTag(ctx context.Context, downloadHash string) error {
+	if m.cfg.General.ObsoleteTag == "" {
+		return fmt.Errorf("obsolete tag not configured")
+	}
+
+	torrent, client := m.findTorrentByHash(ctx, downloadHash)
+	if torrent == nil {
+		return fmt.Errorf("torrent not found: %s", downloadHash)
+	}
+
+	// Check if tag already exists
+	for _, tag := range torrent.Tags {
+		if tag == m.cfg.General.ObsoleteTag {
+			m.logger.Debug("obsolete tag already exists", "hash", downloadHash)
+			return nil
+		}
+	}
+
+	// Add the tag
+	if err := client.AddTags(ctx, downloadHash, []string{m.cfg.General.ObsoleteTag}); err != nil {
+		return fmt.Errorf("failed to add obsolete tag: %w", err)
+	}
+
+	m.logger.Debug("added obsolete tag to torrent",
+		"hash", downloadHash,
+		"tag", m.cfg.General.ObsoleteTag)
+
+	return nil
+}
+
+// findTorrentByHash finds a torrent across all download clients
+func (m *Manager) findTorrentByHash(ctx context.Context, hash string) (*downloadclient.Torrent, downloadclient.Client) {
+	m.mu.RLock()
+	clients := m.downloadClients
+	m.mu.RUnlock()
+
+	for _, client := range clients {
+		torrent, err := client.GetTorrent(ctx, hash)
+		if err != nil {
+			continue // Torrent not found in this client, try next
+		}
+		if torrent != nil {
+			return torrent, client
+		}
+	}
+
+	return nil, nil
+}
+
 // Close cleans up all resources
 func (m *Manager) Close() {
 	m.mu.Lock()

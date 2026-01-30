@@ -155,6 +155,18 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 		manager.RegisterArrClient(inst.Name, client)
 		logger.Debug("registered readarr instance", "name", inst.Name, "url", inst.URL, "api", "v1")
 	}
+	for _, inst := range cfg.Instances.Whisparr {
+		client := arrapi.NewClient(arrapi.ClientConfig{
+			Name:       inst.Name,
+			BaseURL:    inst.URL,
+			APIKey:     inst.APIKey,
+			APIVersion: "v3",
+			Timeout:    cfg.General.RequestTimeout,
+			Logger:     logger,
+		})
+		manager.RegisterArrClient(inst.Name, client)
+		logger.Debug("registered whisparr instance", "name", inst.Name, "url", inst.URL, "api", "v3")
+	}
 
 	// Register download clients
 	for _, dc := range cfg.DownloadClients.Qbittorrent {
@@ -210,9 +222,13 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 		job := removal.NewMetadataMissingJob("remove_metadata_failed", &cfg.Jobs.RemoveMetadataFailed, &cfg.JobDefaults, manager, logger, cfg.General.TestRun)
 		manager.RegisterJob(job)
 	}
+	if cfg.Jobs.RemoveDoneSeeding.Enabled {
+		job := removal.NewDoneSeedingJob("remove_done_seeding", &cfg.Jobs.RemoveDoneSeeding, manager, logger, cfg.General.TestRun)
+		manager.RegisterJob(job)
+	}
 
 	logger.Debug("initialization complete",
-		"arr_instances", len(cfg.Instances.Sonarr)+len(cfg.Instances.Radarr)+len(cfg.Instances.Lidarr)+len(cfg.Instances.Readarr),
+		"arr_instances", len(cfg.Instances.Sonarr)+len(cfg.Instances.Radarr)+len(cfg.Instances.Lidarr)+len(cfg.Instances.Readarr)+len(cfg.Instances.Whisparr),
 		"download_clients", len(cfg.DownloadClients.Qbittorrent)+len(cfg.DownloadClients.Sabnzbd)+len(cfg.DownloadClients.Nzbget),
 	)
 }

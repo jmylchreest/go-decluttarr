@@ -82,6 +82,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("general.request_timeout", 30*time.Second)
 	v.SetDefault("general.private_tracker_handling", "keep")
 	v.SetDefault("general.public_tracker_handling", "remove")
+	v.SetDefault("general.ignore_download_clients", []string{})
+	v.SetDefault("general.obsolete_tag", "Obsolete")
+	v.SetDefault("general.protected_tag", "Keep")
 
 	// Job defaults
 	v.SetDefault("job_defaults.max_strikes", 3)
@@ -113,12 +116,14 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("jobs.enforce_seeding_limits.enabled", false)
 	v.SetDefault("jobs.manage_free_space.enabled", false)
 	v.SetDefault("jobs.remove_duplicate_downloads.enabled", false)
+	v.SetDefault("jobs.remove_done_seeding.enabled", false)
 
 	// Instances - empty by default
 	v.SetDefault("instances.sonarr", []InstanceConfig{})
 	v.SetDefault("instances.radarr", []InstanceConfig{})
 	v.SetDefault("instances.lidarr", []InstanceConfig{})
 	v.SetDefault("instances.readarr", []InstanceConfig{})
+	v.SetDefault("instances.whisparr", []InstanceConfig{})
 
 	// Download clients - empty by default
 	v.SetDefault("download_clients.qbittorrent", []QbittorrentConfig{})

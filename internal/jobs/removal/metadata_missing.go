@@ -187,6 +187,46 @@ func (j *MetadataMissingJob) Run(ctx context.Context) error {
 
 			// Check if max strikes exceeded
 			if strikesHandler.HasExceeded(item.DownloadID, j.maxStrikes) {
+				// Determine removal action based on tracker type and protected tags
+				action := j.manager.GetRemovalAction(ctx, item.DownloadID)
+
+				switch action {
+				case "skip":
+					j.logger.Debug("skipping protected item", "title", item.Title, "download_id", item.DownloadID)
+					continue
+				case "tag":
+					if j.testRun {
+						j.logger.Info("[TEST RUN] would tag metadata-failed download as obsolete",
+							"title", item.Title,
+							"download_id", item.DownloadID,
+							"strikes", currentStrikes,
+							"reason", reason,
+							"instance", instanceName,
+						)
+					} else {
+						if err := j.manager.ApplyObsoleteTag(ctx, item.DownloadID); err != nil {
+							j.logger.Error("failed to tag as obsolete",
+								"title", item.Title,
+								"download_id", item.DownloadID,
+								"error", err,
+							)
+							continue
+						}
+						j.logger.Info("tagged metadata-failed download as obsolete",
+							"title", item.Title,
+							"download_id", item.DownloadID,
+							"strikes", currentStrikes,
+							"reason", reason,
+							"instance", instanceName,
+						)
+					}
+					strikesHandler.Reset(item.DownloadID)
+					totalRemoved++ // Count as handled
+					continue
+				case "remove":
+					// Proceed with removal
+				}
+
 				if j.testRun {
 					j.logger.Info("[TEST RUN] would remove metadata-failed download",
 						"title", item.Title,
