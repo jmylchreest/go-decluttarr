@@ -104,7 +104,7 @@ func (j *StalledJob) isStalledItem(item arrapi.QueueItem) bool {
 
 // Run executes the stalled removal job
 func (j *StalledJob) Run(ctx context.Context) error {
-	j.logger.Info("starting stalled removal job", "test_run", j.testRun, "max_strikes", j.maxStrikes)
+	j.logger.Debug("starting stalled removal job", "test_run", j.testRun, "max_strikes", j.maxStrikes)
 
 	queues, err := j.manager.GetAllQueues(ctx)
 	if err != nil {
@@ -117,7 +117,7 @@ func (j *StalledJob) Run(ctx context.Context) error {
 
 	for instanceName, queue := range queues {
 		affected := j.FindAffected(queue)
-		j.logger.Info("found stalled items",
+		j.logger.Debug("found stalled items",
 			"instance", instanceName,
 			"count", len(affected),
 		)
@@ -172,7 +172,7 @@ func (j *StalledJob) Run(ctx context.Context) error {
 		}
 	}
 
-	j.logger.Info("stalled removal job completed",
+	j.logger.Debug("stalled removal job completed",
 		"processed", totalProcessed,
 		"removed", totalRemoved,
 		"test_run", j.testRun,

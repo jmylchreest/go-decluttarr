@@ -117,7 +117,7 @@ func (j *FailedImportsJob) isFailedImport(item arrapi.QueueItem) bool {
 
 // Run executes the failed imports removal job
 func (j *FailedImportsJob) Run(ctx context.Context) error {
-	j.logger.Info("starting failed imports removal job", "test_run", j.testRun, "max_strikes", j.maxStrikes)
+	j.logger.Debug("starting failed imports removal job", "test_run", j.testRun, "max_strikes", j.maxStrikes)
 
 	queues, err := j.manager.GetAllQueues(ctx)
 	if err != nil {
@@ -130,7 +130,7 @@ func (j *FailedImportsJob) Run(ctx context.Context) error {
 
 	for instanceName, queue := range queues {
 		affected := j.FindAffected(queue)
-		j.logger.Info("found failed imports",
+		j.logger.Debug("found failed imports",
 			"instance", instanceName,
 			"count", len(affected),
 		)
@@ -188,7 +188,7 @@ func (j *FailedImportsJob) Run(ctx context.Context) error {
 		}
 	}
 
-	j.logger.Info("failed imports removal job completed",
+	j.logger.Debug("failed imports removal job completed",
 		"processed", totalProcessed,
 		"removed", totalRemoved,
 		"test_run", j.testRun,

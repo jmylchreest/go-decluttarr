@@ -62,7 +62,7 @@ func (j *UnmonitoredJob) Enabled() bool {
 
 // Run executes the unmonitored removal job
 func (j *UnmonitoredJob) Run(ctx context.Context) error {
-	j.logger.Info("starting unmonitored removal job",
+	j.logger.Debug("starting unmonitored removal job",
 		"test_run", j.testRun,
 		"max_strikes", j.maxStrikes)
 
@@ -134,7 +134,7 @@ func (j *UnmonitoredJob) Run(ctx context.Context) error {
 				continue
 			}
 
-			j.logger.Warn("unmonitored item exceeded max strikes, removing",
+			j.logger.Debug("unmonitored item exceeded max strikes, removing",
 				"instance", instanceName,
 				"queue_id", item.ID,
 				"download_id", item.DownloadID,
@@ -157,11 +157,12 @@ func (j *UnmonitoredJob) Run(ctx context.Context) error {
 					continue
 				}
 
-				j.logger.Info("successfully removed unmonitored queue item",
+				j.logger.Info("removed unmonitored item",
 					"instance", instanceName,
 					"queue_id", item.ID,
 					"download_id", item.DownloadID,
-					"title", item.Title)
+					"title", item.Title,
+					"strikes", currentStrikes)
 
 				// Reset strikes after successful removal
 				strikesHandler.Reset(item.DownloadID)
@@ -177,7 +178,7 @@ func (j *UnmonitoredJob) Run(ctx context.Context) error {
 		}
 	}
 
-	j.logger.Info("unmonitored removal job completed",
+	j.logger.Debug("unmonitored removal job completed",
 		"processed", totalProcessed,
 		"removed", totalRemoved,
 		"test_run", j.testRun)

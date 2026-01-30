@@ -69,7 +69,7 @@ func (j *MissingJob) Stats() jobs.JobStats {
 
 // Run executes the missing search job
 func (j *MissingJob) Run(ctx context.Context) error {
-	j.logger.Info("starting missing items search job",
+	j.logger.Debug("starting missing items search job",
 		"test_run", j.testRun,
 		"min_days_between_searches", j.minDaysBetweenSearches,
 		"max_concurrent_searches", j.maxConcurrentSearches,
@@ -138,7 +138,7 @@ func (j *MissingJob) Run(ctx context.Context) error {
 	j.lastSearched = searched
 	j.mu.Unlock()
 
-	j.logger.Info("missing items search completed",
+	j.logger.Debug("missing items search completed",
 		"found", found,
 		"searches_triggered", searched,
 		"errors", len(errs))

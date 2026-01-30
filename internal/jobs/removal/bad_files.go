@@ -118,7 +118,7 @@ func (j *BadFilesJob) isBadFile(item *arrapi.QueueItem) bool {
 
 // Run executes the bad files removal job
 func (j *BadFilesJob) Run(ctx context.Context) error {
-	j.logger.Info("starting bad files removal job",
+	j.logger.Debug("starting bad files removal job",
 		"test_run", j.testRun,
 		"max_strikes", j.maxStrikes)
 
@@ -137,7 +137,7 @@ func (j *BadFilesJob) Run(ctx context.Context) error {
 			"count", len(queue))
 
 		affected := j.FindAffected(queue)
-		j.logger.Info("found items with bad files",
+		j.logger.Debug("found items with bad files",
 			"instance", instanceName,
 			"count", len(affected),
 		)
@@ -195,7 +195,7 @@ func (j *BadFilesJob) Run(ctx context.Context) error {
 		}
 	}
 
-	j.logger.Info("bad files removal job completed",
+	j.logger.Debug("bad files removal job completed",
 		"processed", totalProcessed,
 		"removed", totalRemoved,
 		"test_run", j.testRun)

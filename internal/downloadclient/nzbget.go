@@ -212,7 +212,7 @@ func (c *NZBGetClient) DeleteItem(ctx context.Context, nzbID int) error {
 		return fmt.Errorf("delete operation failed for item %d", nzbID)
 	}
 
-	c.logger.Info("Deleted NZBGet item",
+	c.logger.Debug("deleted nzbget item",
 		"nzbID", nzbID,
 	)
 
@@ -234,7 +234,7 @@ func (c *NZBGetClient) PauseItem(ctx context.Context, nzbID int) error {
 		return fmt.Errorf("pause operation failed for item %d", nzbID)
 	}
 
-	c.logger.Info("Paused NZBGet item",
+	c.logger.Debug("paused nzbget item",
 		"nzbID", nzbID,
 	)
 
@@ -256,7 +256,7 @@ func (c *NZBGetClient) ResumeItem(ctx context.Context, nzbID int) error {
 		return fmt.Errorf("resume operation failed for item %d", nzbID)
 	}
 
-	c.logger.Info("Resumed NZBGet item",
+	c.logger.Debug("resumed nzbget item",
 		"nzbID", nzbID,
 	)
 

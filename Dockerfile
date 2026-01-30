@@ -3,6 +3,9 @@ FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_DATE=unknown
 
 WORKDIR /app
 
@@ -12,7 +15,10 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
-    -ldflags="-s -w" \
+    -ldflags="-s -w \
+        -X github.com/jmylchreest/go-declutarr/internal/version.Version=${VERSION} \
+        -X github.com/jmylchreest/go-declutarr/internal/version.Commit=${COMMIT} \
+        -X github.com/jmylchreest/go-declutarr/internal/version.BuildDate=${BUILD_DATE}" \
     -o go-declutarr ./cmd/go-declutarr
 
 # Runtime stage - minimal scratch image

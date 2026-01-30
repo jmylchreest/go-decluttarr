@@ -65,7 +65,7 @@ func (j *UnmetCutoffJob) Stats() jobs.JobStats {
 
 // Run executes the unmet cutoff search job
 func (j *UnmetCutoffJob) Run(ctx context.Context) error {
-	j.logger.Info("starting unmet cutoff search job",
+	j.logger.Debug("starting unmet cutoff search job",
 		"test_run", j.testRun,
 		"min_days_between_searches", j.minDaysBetweenSearches,
 		"max_concurrent_searches", j.maxConcurrentSearches,
@@ -93,7 +93,7 @@ func (j *UnmetCutoffJob) Run(ctx context.Context) error {
 		}
 	}
 
-	j.logger.Info("unmet cutoff search job completed",
+	j.logger.Debug("unmet cutoff search job completed",
 		"found", j.lastFound,
 		"searched", j.lastSearched)
 
@@ -113,7 +113,7 @@ func (j *UnmetCutoffJob) processArrInstance(ctx context.Context, instanceName st
 		return fmt.Errorf("failed to get system status: %w", err)
 	}
 
-	j.logger.Info("processing arr instance",
+	j.logger.Debug("processing arr instance",
 		"instance", instanceName,
 		"type", status.AppName)
 
@@ -140,7 +140,7 @@ func (j *UnmetCutoffJob) processSonarr(ctx context.Context, instanceName string,
 		return fmt.Errorf("failed to get cutoff unmet episodes: %w", err)
 	}
 
-	j.logger.Info("found cutoff unmet episodes",
+	j.logger.Debug("found cutoff unmet episodes",
 		"instance", instanceName,
 		"count", len(items))
 	j.lastFound += len(items)
@@ -227,7 +227,7 @@ func (j *UnmetCutoffJob) processRadarr(ctx context.Context, instanceName string,
 		return fmt.Errorf("failed to get cutoff unmet movies: %w", err)
 	}
 
-	j.logger.Info("found cutoff unmet movies",
+	j.logger.Debug("found cutoff unmet movies",
 		"instance", instanceName,
 		"count", len(items))
 	j.lastFound += len(items)
@@ -251,7 +251,7 @@ func (j *UnmetCutoffJob) processRadarr(ctx context.Context, instanceName string,
 
 		// Check if we've reached max concurrent searches
 		if j.maxConcurrentSearches > 0 && searchCount >= j.maxConcurrentSearches {
-			j.logger.Info("reached max concurrent searches limit",
+			j.logger.Debug("reached max concurrent searches limit",
 				"instance", instanceName,
 				"limit", j.maxConcurrentSearches)
 			break

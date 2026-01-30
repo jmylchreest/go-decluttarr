@@ -105,7 +105,7 @@ func (c *Client) DeleteQueueItem(ctx context.Context, id int, opts DeleteOptions
 		return fmt.Errorf("delete queue item %d: %w", id, err)
 	}
 
-	c.logger.InfoContext(ctx, "deleted queue item",
+	c.logger.DebugContext(ctx, "deleted queue item from arr",
 		"id", id,
 		"remove_from_client", opts.RemoveFromClient,
 		"blocklist", opts.Blocklist)

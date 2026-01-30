@@ -101,7 +101,7 @@ func (j *SlowDownloadJob) FindAffected(queue []arrapi.QueueItem) []arrapi.QueueI
 
 // Run executes the slow download removal job
 func (j *SlowDownloadJob) Run(ctx context.Context) error {
-	j.logger.Info("starting slow download removal job",
+	j.logger.Debug("starting slow download removal job",
 		"test_run", j.testRun,
 		"max_strikes", j.maxStrikes,
 		"min_download_speed", j.minDownloadSpeed)
@@ -204,7 +204,7 @@ func (j *SlowDownloadJob) Run(ctx context.Context) error {
 		}
 	}
 
-	j.logger.Info("slow download removal job completed",
+	j.logger.Debug("slow download removal job completed",
 		"processed", totalProcessed,
 		"removed", totalRemoved,
 		"test_run", j.testRun)

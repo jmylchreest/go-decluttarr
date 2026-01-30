@@ -135,7 +135,7 @@ func (c *QBittorrentClient) Login(ctx context.Context) error {
 	for _, cookie := range resp.Cookies() {
 		if cookie.Name == "SID" {
 			c.sid = cookie.Value
-			c.logger.DebugContext(ctx, "authenticated with qBittorrent")
+			c.logger.DebugContext(ctx, "authenticated with qbittorrent")
 			return nil
 		}
 	}
@@ -286,7 +286,7 @@ func (c *QBittorrentClient) DeleteTorrent(ctx context.Context, hash string, dele
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	c.logger.InfoContext(ctx, "deleted torrent", "hash", hash, "delete_files", deleteFiles)
+	c.logger.DebugContext(ctx, "deleted torrent from qbittorrent", "hash", hash, "delete_files", deleteFiles)
 	return nil
 }
 
@@ -328,7 +328,7 @@ func (c *QBittorrentClient) PauseTorrent(ctx context.Context, hash string) error
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	c.logger.InfoContext(ctx, "paused torrent", "hash", hash)
+	c.logger.DebugContext(ctx, "paused torrent", "hash", hash)
 	return nil
 }
 
@@ -370,7 +370,7 @@ func (c *QBittorrentClient) ResumeTorrent(ctx context.Context, hash string) erro
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	c.logger.InfoContext(ctx, "resumed torrent", "hash", hash)
+	c.logger.DebugContext(ctx, "resumed torrent", "hash", hash)
 	return nil
 }
 

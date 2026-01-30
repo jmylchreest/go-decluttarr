@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -16,9 +17,8 @@ import (
 	"github.com/jmylchreest/go-declutarr/internal/jobs"
 	"github.com/jmylchreest/go-declutarr/internal/jobs/removal"
 	"github.com/jmylchreest/go-declutarr/internal/logging"
+	"github.com/jmylchreest/go-declutarr/internal/version"
 )
-
-const version = "0.1.0"
 
 func main() {
 	// Parse flags
@@ -28,7 +28,12 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		slog.Info("go-declutarr", "version", version)
+		info := version.Get()
+		fmt.Printf("go-declutarr %s\n", info.Version)
+		fmt.Printf("  Commit:     %s\n", info.Commit)
+		fmt.Printf("  Built:      %s\n", info.BuildDate)
+		fmt.Printf("  Go version: %s\n", info.GoVersion)
+		fmt.Printf("  OS/Arch:    %s\n", info.Platform)
 		os.Exit(0)
 	}
 
@@ -49,7 +54,13 @@ func main() {
 		logFormat = envFormat
 	}
 	logger := logging.Setup(logLevel, logFormat)
-	logger.Info("starting go-declutarr", "version", version, "data_dir", *dataDir)
+	info := version.Get()
+	logger.Info("starting go-declutarr",
+		"version", info.Version,
+		"commit", info.Commit,
+		"built", info.BuildDate,
+		"data_dir", *dataDir,
+	)
 
 	// Create manager with strikes persistence
 	strikesPath := filepath.Join(*dataDir, "strikes.json")
@@ -106,7 +117,7 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 			Logger:     logger,
 		})
 		manager.RegisterArrClient(inst.Name, client)
-		logger.Info("registered sonarr instance", "name", inst.Name, "url", inst.URL, "api", "v3")
+		logger.Debug("registered sonarr instance", "name", inst.Name, "url", inst.URL, "api", "v3")
 	}
 	for _, inst := range cfg.Instances.Radarr {
 		client := arrapi.NewClient(arrapi.ClientConfig{
@@ -118,7 +129,7 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 			Logger:     logger,
 		})
 		manager.RegisterArrClient(inst.Name, client)
-		logger.Info("registered radarr instance", "name", inst.Name, "url", inst.URL, "api", "v3")
+		logger.Debug("registered radarr instance", "name", inst.Name, "url", inst.URL, "api", "v3")
 	}
 	for _, inst := range cfg.Instances.Lidarr {
 		client := arrapi.NewClient(arrapi.ClientConfig{
@@ -130,7 +141,7 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 			Logger:     logger,
 		})
 		manager.RegisterArrClient(inst.Name, client)
-		logger.Info("registered lidarr instance", "name", inst.Name, "url", inst.URL, "api", "v1")
+		logger.Debug("registered lidarr instance", "name", inst.Name, "url", inst.URL, "api", "v1")
 	}
 	for _, inst := range cfg.Instances.Readarr {
 		client := arrapi.NewClient(arrapi.ClientConfig{
@@ -142,7 +153,7 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 			Logger:     logger,
 		})
 		manager.RegisterArrClient(inst.Name, client)
-		logger.Info("registered readarr instance", "name", inst.Name, "url", inst.URL, "api", "v1")
+		logger.Debug("registered readarr instance", "name", inst.Name, "url", inst.URL, "api", "v1")
 	}
 
 	// Register download clients
@@ -159,7 +170,7 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 			continue
 		}
 		manager.RegisterDownloadClient(dc.Name, client)
-		logger.Info("registered qbittorrent client", "name", dc.Name, "url", dc.URL)
+		logger.Debug("registered qbittorrent client", "name", dc.Name, "url", dc.URL)
 	}
 
 	// Register removal jobs - all using Pattern 1: (name, cfg, defaults, manager, logger, testRun)
@@ -200,7 +211,7 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 		manager.RegisterJob(job)
 	}
 
-	logger.Info("initialization complete",
+	logger.Debug("initialization complete",
 		"arr_instances", len(cfg.Instances.Sonarr)+len(cfg.Instances.Radarr)+len(cfg.Instances.Lidarr)+len(cfg.Instances.Readarr),
 		"download_clients", len(cfg.DownloadClients.Qbittorrent)+len(cfg.DownloadClients.Sabnzbd)+len(cfg.DownloadClients.Nzbget),
 	)

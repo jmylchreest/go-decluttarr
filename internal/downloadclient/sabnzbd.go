@@ -124,7 +124,7 @@ func (c *SABnzbdClient) GetQueue(ctx context.Context) ([]SABnzbdSlot, error) {
 		return nil, fmt.Errorf("failed to decode queue response: %w", err)
 	}
 
-	c.logger.Info("fetched SABnzbd queue", "count", len(queueResp.Queue.Slots))
+	c.logger.Debug("fetched sabnzbd queue", "count", len(queueResp.Queue.Slots))
 	return queueResp.Queue.Slots, nil
 }
 
@@ -144,7 +144,7 @@ func (c *SABnzbdClient) GetHistory(ctx context.Context) ([]SABnzbdHistorySlot, e
 		return nil, fmt.Errorf("failed to decode history response: %w", err)
 	}
 
-	c.logger.Info("fetched SABnzbd history", "count", len(historyResp.History.Slots))
+	c.logger.Debug("fetched sabnzbd history", "count", len(historyResp.History.Slots))
 	return historyResp.History.Slots, nil
 }
 
@@ -164,7 +164,7 @@ func (c *SABnzbdClient) DeleteSlot(ctx context.Context, nzoID string) error {
 	}
 	_ = resp.Body.Close()
 
-	c.logger.Info("deleted SABnzbd slot", "nzo_id", nzoID)
+	c.logger.Debug("deleted sabnzbd slot", "nzo_id", nzoID)
 	return nil
 }
 
@@ -184,7 +184,7 @@ func (c *SABnzbdClient) PauseSlot(ctx context.Context, nzoID string) error {
 	}
 	_ = resp.Body.Close()
 
-	c.logger.Info("paused SABnzbd slot", "nzo_id", nzoID)
+	c.logger.Debug("paused sabnzbd slot", "nzo_id", nzoID)
 	return nil
 }
 
@@ -204,7 +204,7 @@ func (c *SABnzbdClient) ResumeSlot(ctx context.Context, nzoID string) error {
 	}
 	_ = resp.Body.Close()
 
-	c.logger.Info("resumed SABnzbd slot", "nzo_id", nzoID)
+	c.logger.Debug("resumed sabnzbd slot", "nzo_id", nzoID)
 	return nil
 }
 

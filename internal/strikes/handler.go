@@ -215,7 +215,7 @@ func (h *Handler) Load() error {
 		return fmt.Errorf("unmarshal strikes: %w", err)
 	}
 
-	h.logger.Info("loaded persisted strikes", "path", h.persistPath, "count", len(h.strikes))
+	h.logger.Debug("loaded persisted strikes", "path", h.persistPath, "count", len(h.strikes))
 	return nil
 }
 
@@ -235,7 +235,7 @@ func (h *Handler) Cleanup(maxAge time.Duration) int {
 	}
 
 	if removed > 0 {
-		h.logger.Info("cleaned up stale strikes", "removed", removed, "max_age", maxAge)
+		h.logger.Debug("cleaned up stale strikes", "removed", removed, "max_age", maxAge)
 	}
 
 	return removed

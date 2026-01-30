@@ -60,7 +60,7 @@ func (j *OrphansJob) Enabled() bool {
 
 // Run executes the orphans removal job
 func (j *OrphansJob) Run(ctx context.Context) error {
-	j.logger.Info("starting orphans removal job",
+	j.logger.Debug("starting orphans removal job",
 		"test_run", j.testRun,
 		"max_strikes", j.maxStrikes)
 
@@ -83,7 +83,7 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 			"tracked_items", len(queue))
 	}
 
-	j.logger.Info("total tracked downloads across all arr instances",
+	j.logger.Debug("total tracked downloads across all arr instances",
 		"count", len(trackedDownloads))
 
 	// Get all download clients and their torrents
@@ -106,7 +106,7 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 			continue
 		}
 
-		j.logger.Info("retrieved torrents from download client",
+		j.logger.Debug("retrieved torrents from download client",
 			"client", clientName,
 			"count", len(torrents))
 
@@ -140,7 +140,7 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 				continue
 			}
 
-			j.logger.Warn("orphaned torrent exceeded max strikes, removing",
+			j.logger.Debug("orphaned torrent exceeded max strikes, removing",
 				"hash", torrent.Hash,
 				"name", torrent.Name,
 				"strikes", currentStrikes)
@@ -154,9 +154,10 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 					continue
 				}
 
-				j.logger.Info("successfully removed orphaned torrent",
+				j.logger.Info("removed orphaned torrent",
 					"hash", torrent.Hash,
-					"name", torrent.Name)
+					"name", torrent.Name,
+					"strikes", currentStrikes)
 
 				// Reset strikes after successful removal
 				strikesHandler.Reset(torrent.Hash)
@@ -170,7 +171,7 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 		}
 	}
 
-	j.logger.Info("orphans removal job completed",
+	j.logger.Debug("orphans removal job completed",
 		"orphans_found", orphanCount,
 		"removed", removedCount,
 		"test_run", j.testRun)

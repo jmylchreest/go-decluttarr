@@ -62,7 +62,7 @@ func (m *Manager) RegisterJob(job Job) {
 	defer m.mu.Unlock()
 
 	m.jobs = append(m.jobs, job)
-	m.logger.Info("registered job", "job", job.Name())
+	m.logger.Debug("registered job", "job", job.Name())
 }
 
 // RunAll executes all enabled jobs - GRACEFUL: continues on error
@@ -88,7 +88,7 @@ func (m *Manager) RunAll(ctx context.Context) error {
 			continue
 		}
 
-		m.logger.Info("running job", "job", job.Name())
+		m.logger.Debug("running job", "job", job.Name())
 		stats.JobsRun++
 
 		if err := job.Run(ctx); err != nil {
@@ -99,7 +99,7 @@ func (m *Manager) RunAll(ctx context.Context) error {
 			stats.Errors = append(stats.Errors, fmt.Sprintf("%s: %v", job.Name(), err))
 			// CONTINUE - don't terminate!
 		} else {
-			m.logger.Info("job completed successfully", "job", job.Name())
+			m.logger.Debug("job completed successfully", "job", job.Name())
 		}
 
 		// Collect job stats if available
@@ -237,7 +237,7 @@ func (m *Manager) RegisterArrClient(name string, client *arrapi.Client) {
 	defer m.mu.Unlock()
 
 	m.arrClients[name] = client
-	m.logger.Info("registered arr client", "instance", name)
+	m.logger.Debug("registered arr client", "instance", name)
 }
 
 // RegisterDownloadClient adds a download client to the manager
@@ -246,7 +246,7 @@ func (m *Manager) RegisterDownloadClient(name string, client downloadclient.Clie
 	defer m.mu.Unlock()
 
 	m.downloadClients[name] = client
-	m.logger.Info("registered download client", "client", name)
+	m.logger.Debug("registered download client", "client", name)
 }
 
 // GetArrClient retrieves an *arr client by name

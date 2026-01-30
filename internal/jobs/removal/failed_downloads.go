@@ -118,7 +118,7 @@ func (j *FailedDownloadsJob) isFailedDownload(item arrapi.QueueItem) bool {
 
 // Run executes the failed downloads removal job
 func (j *FailedDownloadsJob) Run(ctx context.Context) error {
-	j.logger.Info("starting failed downloads removal job", "test_run", j.testRun, "max_strikes", j.maxStrikes)
+	j.logger.Debug("starting failed downloads removal job", "test_run", j.testRun, "max_strikes", j.maxStrikes)
 
 	queues, err := j.manager.GetAllQueues(ctx)
 	if err != nil {
@@ -131,7 +131,7 @@ func (j *FailedDownloadsJob) Run(ctx context.Context) error {
 
 	for instanceName, queue := range queues {
 		affected := j.FindAffected(queue)
-		j.logger.Info("found failed downloads",
+		j.logger.Debug("found failed downloads",
 			"instance", instanceName,
 			"count", len(affected),
 		)
@@ -188,7 +188,7 @@ func (j *FailedDownloadsJob) Run(ctx context.Context) error {
 		}
 	}
 
-	j.logger.Info("failed downloads removal job completed",
+	j.logger.Debug("failed downloads removal job completed",
 		"processed", totalProcessed,
 		"removed", totalRemoved,
 		"test_run", j.testRun,

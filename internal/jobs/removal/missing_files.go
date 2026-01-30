@@ -107,7 +107,7 @@ func (j *MissingFilesJob) hasMissingFiles(item *arrapi.QueueItem) bool {
 
 // Run executes the missing files removal job
 func (j *MissingFilesJob) Run(ctx context.Context) error {
-	j.logger.Info("starting missing files removal job",
+	j.logger.Debug("starting missing files removal job",
 		"test_run", j.testRun,
 		"max_strikes", j.maxStrikes)
 
@@ -122,7 +122,7 @@ func (j *MissingFilesJob) Run(ctx context.Context) error {
 
 	for instanceName, queue := range queues {
 		affected := j.FindAffected(queue)
-		j.logger.Info("found items with missing files",
+		j.logger.Debug("found items with missing files",
 			"instance", instanceName,
 			"count", len(affected),
 		)
@@ -175,7 +175,7 @@ func (j *MissingFilesJob) Run(ctx context.Context) error {
 		}
 	}
 
-	j.logger.Info("missing files removal job completed",
+	j.logger.Debug("missing files removal job completed",
 		"processed", totalProcessed,
 		"removed", totalRemoved,
 		"test_run", j.testRun)
