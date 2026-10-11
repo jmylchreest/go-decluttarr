@@ -4,7 +4,7 @@ Reviewed 11 October 2026. The changes address unsafe cleanup decisions, update G
 
 ## Dependencies and supply chain
 
-Go is aligned at 1.27.1 in `go.mod` and Docker’s builder. Direct and indirect dependencies were updated using `go get -u -t ./...`, `go get -u all` and `go mod tidy`. Highlights include slog-logfilter 0.2.1, testify 1.12.1, mapstructure 2.5.0, go-toml 2.4.3, fsnotify 1.10.1, x/sys 0.49.0 and x/text 0.43.0. Viper remains 1.21.0, its current resolved release. Dependency updates are constrained to existing module paths; no unreviewed major-version migrations were introduced. The application and its tests use current module versions. `go list -m -u all` still shows newer versions for a few upstream development-only graph entries (go-cmp, go-internal, x/mod and x/tools); these are not in this project’s compiled dependency set, and `tidy` removes unused overrides.
+Go is aligned at 1.27.2 in `go.mod` and Docker’s builder. Direct and indirect dependencies were updated using `go get -u -t ./...`, `go get -u all` and `go mod tidy`. Highlights include slog-logfilter 0.2.1, testify 1.12.1, mapstructure 2.5.0, go-toml 2.4.3, fsnotify 1.10.1, x/sys 0.49.0 and x/text 0.43.0. Viper remains 1.21.0, its current resolved release. Dependency updates are constrained to existing module paths; no unreviewed major-version migrations were introduced. The application and its tests use current module versions. `go list -m -u all` still shows newer versions for a few upstream development-only graph entries (go-cmp, go-internal, x/mod and x/tools); these are not in this project’s compiled dependency set, and `tidy` removes unused overrides.
 
 GitHub checkout/setup-go and Docker actions were updated to current release commits and pinned by SHA. CI security tools are version-pinned. `.dockerignore` excludes local configuration, credentials, state and git metadata from the build context. The runtime remains a non-root scratch image.
 
@@ -106,3 +106,15 @@ the 100-request cap, and protection despite overlapping cleanup scopes and an
 API outage. Full race-enabled tests, go vet, executable build, gosec and
 govulncheck passed after these changes. Sportarr status and empty-queue reads subsequently passed against 4.1.9.1119; populated queues and other live integrations remain pending.
 See [integration setup and boundaries](../README.md#sportarr-bookshelf-and-shelfarr).
+
+
+## Release CI findings
+
+The first PR CI run superseded the earlier clean local scan: fresh vulnerability
+data reported eight reachable standard-library findings with Go 1.27.1, and the
+built image scan reported three HIGH stdlib CVEs. Both go.mod and the Docker
+builder were updated to Go 1.27.2, the reported fixed release. CI also exposed
+two shellcheck quoting errors not detected by the local actionlint invocation;
+GITHUB_OUTPUT redirections are now quoted. The container build and version smoke
+test themselves passed on GitHub's runner. Final release readiness requires a
+successful rerun of all checks.

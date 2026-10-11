@@ -1,6 +1,6 @@
 module github.com/jmylchreest/go-decluttarr
 
-go 1.27.1
+go 1.27.2
 
 require (
 	github.com/jmylchreest/slog-logfilter v0.2.1
