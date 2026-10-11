@@ -44,7 +44,9 @@ jobs:
       - name: Known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - name: Source security analysis
-        run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 ./...
+        run: |
+          (cd .github/tools/gosec && go build -o "$RUNNER_TEMP/gosec" github.com/securego/gosec/v2/cmd/gosec)
+          "$RUNNER_TEMP/gosec" ./...
       - name: Secret scan (history and working tree)
         run: |
           go run github.com/zricethezav/gitleaks/v8@v8.30.1 git --redact --no-banner
