@@ -5,9 +5,11 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -40,13 +42,17 @@ func New(cfg Config) *Client {
 	transport := &http.Transport{
 		MaxIdleConns:    cfg.MaxIdleConns,
 		IdleConnTimeout: cfg.IdleConnTimeout,
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipTLSVerify},
+		// #nosec G402 -- Explicit operator opt-out for private services; verification is enabled by default.
+		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: cfg.SkipTLSVerify},
 	}
 
 	return &Client{
 		http: &http.Client{
 			Transport: transport,
-			Timeout:   cfg.Timeout,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return errors.New("API redirects are disabled to protect credentials")
+			},
+			Timeout: cfg.Timeout,
 		},
 		timeout: cfg.Timeout,
 	}
@@ -57,7 +63,15 @@ func New(cfg Config) *Client {
 // We don't add context timeout here as it would cancel before body is fully read.
 func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
 	req = req.WithContext(ctx)
-	return c.http.Do(req)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			// Transport errors include full URLs, potentially containing SABnzbd API keys.
+			return resp, fmt.Errorf("HTTP %s failed: %w", req.Method, urlErr.Err)
+		}
+	}
+	return resp, err
 }
 
 // Get performs a GET request to the specified URL
@@ -99,7 +113,7 @@ func (c *Client) DecodeJSON(resp *http.Response, target interface{}) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
 

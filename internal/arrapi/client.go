@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ type Client struct {
 	baseURL    string
 	apiKey     string
 	apiVersion string
+	appType    string
 	http       *httpclient.Client
 	logger     *slog.Logger
 }
@@ -29,6 +31,7 @@ type ClientConfig struct {
 	Name       string
 	BaseURL    string
 	APIKey     string
+	AppType    string // Explicit application identity for endpoint differences.
 	APIVersion string // "v1" for Lidarr/Readarr, "v3" for Sonarr/Radarr
 	Timeout    time.Duration
 	SkipTLS    bool
@@ -61,6 +64,7 @@ func NewClient(cfg ClientConfig) *Client {
 		baseURL:    strings.TrimRight(cfg.BaseURL, "/"),
 		apiKey:     cfg.APIKey,
 		apiVersion: cfg.APIVersion,
+		appType:    strings.ToLower(cfg.AppType),
 		http:       httpclient.New(httpCfg),
 		logger:     logger.With("service", cfg.Name),
 	}
@@ -68,17 +72,25 @@ func NewClient(cfg ClientConfig) *Client {
 
 // GetQueue retrieves all items in the download queue
 func (c *Client) GetQueue(ctx context.Context) ([]QueueItem, error) {
-	var queueResp QueueResponse
-	path := fmt.Sprintf("/api/%s/queue?page=1&pageSize=1000", c.apiVersion)
-	if err := c.request(ctx, http.MethodGet, path, nil, &queueResp); err != nil {
-		return nil, fmt.Errorf("get queue: %w", err)
+	var items []QueueItem
+	for page := 1; ; page++ {
+		var response QueueResponse
+		path := fmt.Sprintf("/api/%s/queue?page=%d&pageSize=1000", c.apiVersion, page)
+		if err := c.request(ctx, http.MethodGet, path, nil, &response); err != nil {
+			return nil, fmt.Errorf("get queue page %d: %w", page, err)
+		}
+		if response.Page != 0 && response.Page != page {
+			return nil, fmt.Errorf("unexpected queue page %d, wanted %d", response.Page, page)
+		}
+		items = append(items, response.Records...)
+		if len(items) >= response.TotalRecords {
+			return items, nil
+		}
+		if len(response.Records) == 0 {
+			return nil, fmt.Errorf("incomplete queue: empty page %d", page)
+		}
 	}
 
-	c.logger.DebugContext(ctx, "retrieved queue",
-		"total_items", queueResp.TotalRecords,
-		"page_size", queueResp.PageSize)
-
-	return queueResp.Records, nil
 }
 
 // DeleteQueueItem removes an item from the queue
@@ -87,15 +99,10 @@ func (c *Client) DeleteQueueItem(ctx context.Context, id int, opts DeleteOptions
 
 	// Build query parameters
 	params := url.Values{}
-	if opts.RemoveFromClient {
-		params.Set("removeFromClient", "true")
-	}
-	if opts.Blocklist {
-		params.Set("blocklist", "true")
-	}
-	if opts.SkipRedownload {
-		params.Set("skipRedownload", "true")
-	}
+	// Send false explicitly: Sportarr (and several arr APIs) default removal to true.
+	params.Set("removeFromClient", strconv.FormatBool(opts.RemoveFromClient))
+	params.Set("blocklist", strconv.FormatBool(opts.Blocklist))
+	params.Set("skipRedownload", strconv.FormatBool(opts.SkipRedownload))
 
 	if len(params) > 0 {
 		path = path + "?" + params.Encode()
@@ -117,6 +124,9 @@ func (c *Client) DeleteQueueItem(ctx context.Context, id int, opts DeleteOptions
 func (c *Client) GetSystemStatus(ctx context.Context) (*SystemStatus, error) {
 	var status SystemStatus
 	path := fmt.Sprintf("/api/%s/system/status", c.apiVersion)
+	if c.appType == "sportarr" {
+		path = "/api/system/status"
+	}
 	if err := c.request(ctx, http.MethodGet, path, nil, &status); err != nil {
 		return nil, fmt.Errorf("get system status: %w", err)
 	}
@@ -174,7 +184,7 @@ func (c *Client) request(ctx context.Context, method, path string, body, result 
 
 	// Handle non-2xx status codes
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		c.logger.ErrorContext(ctx, "API error response",
 			"status", resp.StatusCode,
 			"body", string(bodyBytes))
@@ -197,15 +207,24 @@ func (c *Client) request(ctx context.Context, method, path string, body, result 
 // GetMonitoredStatus retrieves the monitored status for an entity
 func (c *Client) GetMonitoredStatus(ctx context.Context, entityType string, id int) (bool, error) {
 	var result struct {
-		Monitored bool `json:"monitored"`
+		Monitored *bool `json:"monitored"`
 	}
 
 	endpoint := fmt.Sprintf("/api/%s/%s/%d", c.apiVersion, entityType, id)
+	if c.appType == "sportarr" {
+		if entityType != "event" {
+			return false, fmt.Errorf("unsupported Sportarr entity %q", entityType)
+		}
+		endpoint = fmt.Sprintf("/api/events/%d", id)
+	}
 	if err := c.request(ctx, http.MethodGet, endpoint, nil, &result); err != nil {
 		return false, fmt.Errorf("get %s %d monitored status: %w", entityType, id, err)
 	}
 
-	return result.Monitored, nil
+	if result.Monitored == nil {
+		return false, fmt.Errorf("missing monitored status for %s %d", entityType, id)
+	}
+	return *result.Monitored, nil
 }
 
 // Close closes the underlying HTTP client connections
@@ -240,3 +259,6 @@ func (c *Client) post(ctx context.Context, path string, body io.Reader) error {
 func (c *Client) delete(ctx context.Context, path string) error {
 	return c.request(ctx, http.MethodDelete, fmt.Sprintf("/api/%s/%s", c.apiVersion, path), nil, nil)
 }
+
+// AppType returns the configured application identity, if supplied.
+func (c *Client) AppType() string { return c.appType }

@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/jmylchreest/go-decluttarr/internal/arrapi"
 	"github.com/jmylchreest/go-decluttarr/internal/config"
 	"github.com/jmylchreest/go-decluttarr/internal/downloadclient"
+	"github.com/jmylchreest/go-decluttarr/internal/shelfarr"
 	"github.com/jmylchreest/go-decluttarr/internal/strikes"
 )
 
@@ -25,6 +27,7 @@ type CycleStats struct {
 	StrikesAdded int
 	StrikesReset int
 	TotalStrikes int
+	Shelfarr     map[string]*shelfarr.Snapshot
 	Errors       []string
 }
 
@@ -35,8 +38,10 @@ type Manager struct {
 	jobs            []Job
 	arrClients      map[string]*arrapi.Client // keyed by instance name
 	downloadClients map[string]downloadclient.Client
+	shelfarrClients map[string]*shelfarr.Client
 	strikes         *strikes.Handler
 	mu              sync.RWMutex
+	runMu           sync.Mutex
 	lastStats       *CycleStats
 }
 
@@ -53,6 +58,7 @@ func NewManager(cfg *config.Config, logger *slog.Logger, strikesPath string) *Ma
 		arrClients:      make(map[string]*arrapi.Client),
 		downloadClients: make(map[string]downloadclient.Client),
 		strikes:         strikes.NewHandler(strikesPath, logger),
+		shelfarrClients: make(map[string]*shelfarr.Client),
 	}
 }
 
@@ -67,8 +73,10 @@ func (m *Manager) RegisterJob(job Job) {
 
 // RunAll executes all enabled jobs - GRACEFUL: continues on error
 func (m *Manager) RunAll(ctx context.Context) error {
+	m.runMu.Lock()
+	defer m.runMu.Unlock()
 	m.mu.RLock()
-	jobs := m.jobs
+	jobs := slices.Clone(m.jobs)
 	m.mu.RUnlock()
 
 	// Initialize cycle stats
@@ -77,12 +85,38 @@ func (m *Manager) RunAll(ctx context.Context) error {
 		ItemsFound:   make(map[string]int),
 		ItemsRemoved: make(map[string]int),
 		Errors:       make([]string, 0),
+		Shelfarr:     make(map[string]*shelfarr.Snapshot),
 	}
 
 	var errs []error
 	var failedJobs []string
 
+	m.mu.RLock()
+	shelfarrClients := make(map[string]*shelfarr.Client, len(m.shelfarrClients))
+	for name, client := range m.shelfarrClients {
+		shelfarrClients[name] = client
+	}
+	m.mu.RUnlock()
+	for name, client := range shelfarrClients {
+		snapshot, err := client.GetSnapshot(ctx)
+		if err != nil {
+			wrapped := fmt.Errorf("shelfarr %s: %w", name, err)
+			errs = append(errs, wrapped)
+			failedJobs = append(failedJobs, "shelfarr/"+name)
+			stats.Errors = append(stats.Errors, wrapped.Error())
+			m.logger.Warn("Shelfarr request monitoring failed; category protection remains active", "instance", name, "error", err)
+			continue
+		}
+		stats.Shelfarr[name] = snapshot
+		m.logger.Info("Shelfarr request snapshot", "instance", name, "observed", snapshot.Observed,
+			"at_limit", snapshot.AtLimit, "status_counts", snapshot.StatusCounts, "attention_needed", snapshot.AttentionNeeded,
+			"scope", "recent requests visible to token; not download ownership")
+	}
+
 	for _, job := range jobs {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		if !job.Enabled() {
 			m.logger.Debug("skipping disabled job", "job", job.Name())
 			continue
@@ -118,13 +152,13 @@ func (m *Manager) RunAll(ctx context.Context) error {
 	stats.EndTime = time.Now()
 	stats.Duration = stats.EndTime.Sub(stats.StartTime)
 
+	// Remove expired state before persisting it.
+	m.strikes.Cleanup(7 * 24 * time.Hour)
+
 	// Save strikes to disk
 	if err := m.strikes.Save(); err != nil {
 		m.logger.Error("failed to save strikes", "error", err)
 	}
-
-	// Cleanup stale strikes (older than 7 days)
-	m.strikes.Cleanup(7 * 24 * time.Hour)
 
 	// Store stats for later access
 	m.mu.Lock()
@@ -135,7 +169,7 @@ func (m *Manager) RunAll(ctx context.Context) error {
 	m.logCycleSummary(stats)
 
 	if len(errs) > 0 {
-		return fmt.Errorf("%d jobs failed: %v", len(errs), failedJobs)
+		return fmt.Errorf("%d cycle operations failed: %v", len(errs), failedJobs)
 	}
 
 	return nil
@@ -205,24 +239,37 @@ func (m *Manager) GetLastStats() *CycleStats {
 
 // GetAllQueues fetches queue from all configured arr instances
 func (m *Manager) GetAllQueues(ctx context.Context) (map[string][]arrapi.QueueItem, error) {
-	m.mu.RLock()
-	clients := m.arrClients
-	m.mu.RUnlock()
+	clients := m.GetAllArrClients()
 
 	result := make(map[string][]arrapi.QueueItem)
 	var errs []error
 
+	// Bound simultaneous requests while allowing independent instances to overlap.
+	var wg sync.WaitGroup
+	var resultMu sync.Mutex
+	sem := make(chan struct{}, 4)
 	for name, client := range clients {
-		queue, err := client.GetQueue(ctx)
-		if err != nil {
-			m.logger.Error("failed to get queue", "instance", name, "error", err)
-			errs = append(errs, fmt.Errorf("%s: %w", name, err))
-			continue
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			wg.Wait()
+			return result, ctx.Err()
 		}
-
-		result[name] = queue
-		m.logger.Debug("retrieved queue", "instance", name, "items", len(queue))
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			queue, err := client.GetQueue(ctx)
+			resultMu.Lock()
+			defer resultMu.Unlock()
+			if err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", name, err))
+				return
+			}
+			result[name] = queue
+		}()
 	}
+	wg.Wait()
 
 	if len(errs) > 0 {
 		return result, fmt.Errorf("errors retrieving queues: %v", errs)
@@ -285,6 +332,9 @@ func (m *Manager) GetAllDownloadClients() map[string]downloadclient.Client {
 	// Return a copy to avoid concurrent modification
 	result := make(map[string]downloadclient.Client, len(m.downloadClients))
 	for k, v := range m.downloadClients {
+		if slices.Contains(m.cfg.General.IgnoreDownloadClients, k) {
+			continue
+		}
 		result[k] = v
 	}
 	return result
@@ -310,7 +360,21 @@ func (m *Manager) GetRemovalAction(ctx context.Context, downloadHash string) str
 	torrent, client := m.findTorrentByHash(ctx, downloadHash)
 	if torrent == nil {
 		m.logger.Debug("torrent not found for removal action check", "hash", downloadHash)
-		return "remove" // Default to remove if torrent not found
+		return "skip" // Ownership and protection could not be established.
+	}
+
+	return m.GetTorrentRemovalAction(ctx, torrent, client)
+}
+
+// GetTorrentRemovalAction evaluates a known download on its owning client.
+// Direct-client jobs avoid a second lookup across unrelated clients.
+func (m *Manager) GetTorrentRemovalAction(ctx context.Context, torrent *downloadclient.Torrent, client downloadclient.Client) string {
+	if torrent == nil || client == nil {
+		return "skip"
+	}
+	downloadHash := torrent.Hash
+	if m.IsShelfarrCategory(torrent.Category) {
+		return "skip"
 	}
 
 	// Check for protected tag
@@ -328,10 +392,10 @@ func (m *Manager) GetRemovalAction(ctx context.Context, downloadHash string) str
 	// Step 2: Check tracker type (private vs public)
 	isPrivate, err := client.IsPrivateTracker(ctx, downloadHash)
 	if err != nil {
-		m.logger.Warn("failed to determine tracker type, defaulting to public handling",
+		m.logger.Warn("failed to determine tracker type, skipping removal",
 			"hash", downloadHash,
 			"error", err)
-		isPrivate = false
+		return "skip"
 	}
 
 	// Step 3: Apply configured handling based on tracker type
@@ -352,14 +416,14 @@ func (m *Manager) GetRemovalAction(ctx context.Context, downloadHash string) str
 	switch handling {
 	case "remove":
 		return "remove"
-	case "skip":
+	case "skip", "keep":
 		return "skip"
 	case "obsolete_tag":
 		return "tag"
 	default:
-		m.logger.Warn("unknown tracker handling type, defaulting to remove",
+		m.logger.Warn("unknown tracker handling type, skipping removal",
 			"handling", handling)
-		return "remove"
+		return "skip"
 	}
 }
 
@@ -396,9 +460,7 @@ func (m *Manager) ApplyObsoleteTag(ctx context.Context, downloadHash string) err
 
 // findTorrentByHash finds a torrent across all download clients
 func (m *Manager) findTorrentByHash(ctx context.Context, hash string) (*downloadclient.Torrent, downloadclient.Client) {
-	m.mu.RLock()
-	clients := m.downloadClients
-	m.mu.RUnlock()
+	clients := m.GetAllDownloadClients()
 
 	for _, client := range clients {
 		torrent, err := client.GetTorrent(ctx, hash)
@@ -429,5 +491,31 @@ func (m *Manager) Close() {
 		m.logger.Debug("closed arr client", "instance", name)
 	}
 
+	for _, client := range m.shelfarrClients {
+		client.Close()
+	}
 	m.logger.Info("job manager closed")
+}
+
+// IsIgnoredDownloadClient reports whether the operator excluded this named client.
+func (m *Manager) IsIgnoredDownloadClient(name string) bool {
+	return slices.Contains(m.cfg.General.IgnoreDownloadClients, name)
+}
+
+// RegisterShelfarrClient adds a read-only request monitor, not an arr queue owner.
+func (m *Manager) RegisterShelfarrClient(name string, client *shelfarr.Client) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.shelfarrClients[name] = client
+}
+
+// IsShelfarrCategory excludes configured categories on every download client.
+// This protection is independent of API availability and request-list visibility.
+func (m *Manager) IsShelfarrCategory(category string) bool {
+	for _, instance := range m.cfg.Instances.Shelfarr {
+		if slices.Contains(instance.ProtectedCategories, category) {
+			return true
+		}
+	}
+	return false
 }

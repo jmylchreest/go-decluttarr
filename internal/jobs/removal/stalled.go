@@ -65,6 +65,9 @@ func (j *StalledJob) FindAffected(queue []arrapi.QueueItem) []arrapi.QueueItem {
 	var affected []arrapi.QueueItem
 
 	for _, item := range queue {
+		if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+			continue
+		}
 		if j.isStalledItem(item) {
 			affected = append(affected, item)
 		}
@@ -123,6 +126,9 @@ func (j *StalledJob) Run(ctx context.Context) error {
 		)
 
 		for _, item := range affected {
+			if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+				continue
+			}
 			totalProcessed++
 
 			// Add strike for this download

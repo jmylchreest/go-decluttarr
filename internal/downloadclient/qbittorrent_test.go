@@ -602,3 +602,63 @@ func TestMapQBitState(t *testing.T) {
 		})
 	}
 }
+
+// Exercise the complete login/read/write flow for both API generations.
+func TestQBitSessionCompatibility(t *testing.T) {
+	for _, modern := range []bool{false, true} {
+		name := "legacy"
+		if modern {
+			name = "5.2"
+		}
+		t.Run(name, func(t *testing.T) {
+			cookieName := "SID"
+			if modern {
+				cookieName = "QBT_SID_8080"
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/api/v2/auth/login" {
+					http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "session"})
+					if modern {
+						w.WriteHeader(http.StatusNoContent)
+					} else {
+						_, _ = w.Write([]byte("Ok."))
+					}
+					return
+				}
+				cookie, err := r.Cookie(cookieName)
+				if !assert.NoError(t, err) {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				assert.Equal(t, "session", cookie.Value)
+				if r.Method == http.MethodGet {
+					_, _ = w.Write([]byte("[]"))
+					return
+				}
+				if modern {
+					w.WriteHeader(http.StatusNoContent)
+				} else {
+					w.WriteHeader(http.StatusOK)
+				}
+			}))
+			defer server.Close()
+			client, err := NewQBittorrentClient(QBittorrentConfig{BaseURL: server.URL})
+			require.NoError(t, err)
+			_, err = client.GetTorrents(context.Background())
+			require.NoError(t, err)
+			require.NoError(t, client.DeleteTorrent(context.Background(), "fake-hash", false))
+			require.NoError(t, client.AddTags(context.Background(), "fake-hash", []string{"test"}))
+			require.NoError(t, client.RemoveTags(context.Background(), "fake-hash", []string{"test"}))
+		})
+	}
+}
+
+func TestQBitNoContentRequiresSessionCookie(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	client, err := NewQBittorrentClient(QBittorrentConfig{BaseURL: server.URL})
+	require.NoError(t, err)
+	require.ErrorContains(t, client.Login(context.Background()), "SID cookie not found")
+}

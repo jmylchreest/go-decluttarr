@@ -22,11 +22,11 @@ general:
   request_timeout: 30s
 
   # How to handle torrents from private trackers
-  # Options: pause, ignore
-  private_tracker_handling: pause
+  # Options: keep (alias for skip), remove, obsolete_tag
+  private_tracker_handling: keep
 
   # How to handle torrents from public trackers
-  # Options: remove, ignore
+  # Options: remove, skip, obsolete_tag
   public_tracker_handling: remove
 
 # ============================================================================
@@ -111,6 +111,9 @@ jobs:
   # Remove orphaned downloads (no matching item in *arr)
   remove_orphans:
     enabled: false
+    # Required when enabled: categories used EXCLUSIVELY by configured arr instances.
+    # Never include Shelfarr, shared, or uncategorized downloads.
+    target_categories: []
 
   # Remove downloads with missing files
   remove_missing_files:
@@ -122,9 +125,17 @@ jobs:
     tags_to_apply:
       - orphan
 
-  # Remove downloads with metadata failures
+  # Remove releases that cannot be matched to *arr library items
   remove_metadata_failed:
     enabled: false
+
+  # Remove torrents repeatedly reported as waiting for swarm metadata.
+  # Uses case-insensitive literal message matching, not library matching.
+  remove_metadata_downloading:
+    enabled: false
+    max_strikes: 3
+    message_patterns:
+      - downloading metadata
 
   # Enforce seeding limits (ratio/time)
   enforce_seeding_limits:
@@ -191,6 +202,27 @@ instances:
       url: http://readarr:8787
       api_key: your-readarr-api-key
       enabled: false
+
+  # Sportarr indexer/download-client queue (IPTV/DVR recordings are excluded).
+  sportarr: []
+  # Example entry:
+  #   - name: sportarr-main
+  #     url: http://sportarr:1867
+  #     api_key: your-sportarr-api-key
+
+  # Bookshelf uses the Readarr-compatible v1 API.
+  bookshelf: []
+  #   - name: bookshelf-main
+  #     url: http://bookshelf:8787
+  #     api_key: your-bookshelf-api-key
+
+  # Shelfarr request monitoring only. Categories are protected on every client,
+  # including during API outages. Use your actual, dedicated category names.
+  shelfarr: []
+  #   - name: shelfarr-main
+  #     url: http://shelfarr:3000
+  #     api_key: your-shelfarr-bearer-token
+  #     protected_categories: [shelfarr]
 
 # ============================================================================
 # DOWNLOAD CLIENTS

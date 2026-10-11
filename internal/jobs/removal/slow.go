@@ -77,8 +77,11 @@ func (j *SlowDownloadJob) FindAffected(queue []arrapi.QueueItem) []arrapi.QueueI
 	}
 
 	for _, item := range queue {
+		if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+			continue
+		}
 		// Skip if not downloading
-		if item.Status != "downloading" {
+		if item.Status != "downloading" || item.Added.IsZero() {
 			continue
 		}
 
@@ -126,8 +129,11 @@ func (j *SlowDownloadJob) Run(ctx context.Context) error {
 			"count", len(queue))
 
 		for _, item := range queue {
+			if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+				continue
+			}
 			// Skip if not downloading
-			if item.Status != "downloading" {
+			if item.Status != "downloading" || item.Added.IsZero() {
 				continue
 			}
 

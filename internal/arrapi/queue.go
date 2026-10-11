@@ -16,8 +16,8 @@ type QueueItem struct {
 	DownloadClient          string          `json:"downloadClient"`
 	Indexer                 string          `json:"indexer"`
 	OutputPath              string          `json:"outputPath"`
-	Size                    int64           `json:"size"`
-	Sizeleft                int64           `json:"sizeleft"`
+	Size                    float64         `json:"size"`
+	Sizeleft                float64         `json:"sizeleft"`
 	Added                   time.Time       `json:"added"`
 	EstimatedCompletionTime *time.Time      `json:"estimatedCompletionTime"`
 

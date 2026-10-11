@@ -40,6 +40,7 @@ func Load(configPath string) (*Config, error) {
 	// Read config file if found, expanding environment variables
 	if configPath != "" {
 		// Read file content
+		// #nosec G304 G703 -- Path is explicitly selected by the local operator via CLI/environment, not remote input.
 		content, err := os.ReadFile(configPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
@@ -96,9 +97,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("job_defaults.min_download_speed", 100.0) // KB/s
 	v.SetDefault("job_defaults.min_time_left", 0*time.Second)
 	v.SetDefault("job_defaults.min_ratio", 0.0)
-	v.SetDefault("job_defaults.max_ratio", 0.0) // 0 = unlimited
-	v.SetDefault("job_defaults.max_seed_time", 0*time.Second) // 0 = unlimited
-	v.SetDefault("job_defaults.max_active_downloads", 0) // 0 = unlimited
+	v.SetDefault("job_defaults.max_ratio", 0.0)                          // 0 = unlimited
+	v.SetDefault("job_defaults.max_seed_time", 0*time.Second)            // 0 = unlimited
+	v.SetDefault("job_defaults.max_active_downloads", 0)                 // 0 = unlimited
 	v.SetDefault("job_defaults.free_space_threshold", 10*1024*1024*1024) // 10GB
 	v.SetDefault("job_defaults.apply_imported_action", true)
 	v.SetDefault("job_defaults.apply_not_imported", false)
@@ -113,6 +114,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("jobs.remove_missing_files.enabled", false)
 	v.SetDefault("jobs.tag_orphans.enabled", false)
 	v.SetDefault("jobs.remove_metadata_failed.enabled", false)
+	v.SetDefault("jobs.remove_metadata_downloading.enabled", false)
+	v.SetDefault("jobs.remove_metadata_downloading.message_patterns", []string{"downloading metadata"})
 	v.SetDefault("jobs.enforce_seeding_limits.enabled", false)
 	v.SetDefault("jobs.manage_free_space.enabled", false)
 	v.SetDefault("jobs.remove_duplicate_downloads.enabled", false)
@@ -124,6 +127,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("instances.lidarr", []InstanceConfig{})
 	v.SetDefault("instances.readarr", []InstanceConfig{})
 	v.SetDefault("instances.whisparr", []InstanceConfig{})
+	v.SetDefault("instances.sportarr", []InstanceConfig{})
+	v.SetDefault("instances.bookshelf", []InstanceConfig{})
+	v.SetDefault("instances.shelfarr", []ShelfarrConfig{})
 
 	// Download clients - empty by default
 	v.SetDefault("download_clients.qbittorrent", []QbittorrentConfig{})

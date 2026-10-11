@@ -5,11 +5,11 @@ metadata:
   name: decluttarr
 ---
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
   name: go-decluttarr-config
   namespace: decluttarr
-data:
+stringData:
   config.yaml: |
     # ==========================================================================
     # GENERAL SETTINGS
@@ -30,10 +30,10 @@ data:
       # API request timeout
       request_timeout: 30s
 
-      # Private tracker torrents: pause or ignore
-      private_tracker_handling: pause
+      # Private tracker torrents: keep (alias for skip), remove, or obsolete_tag
+      private_tracker_handling: keep
 
-      # Public tracker torrents: remove or ignore
+      # Public tracker torrents: remove, skip, or obsolete_tag
       public_tracker_handling: remove
 
     # ==========================================================================
@@ -82,7 +82,9 @@ data:
         enabled: true
 
       remove_orphans:
-        enabled: true
+        # Enable only after assigning exclusive arr-owned target_categories.
+        enabled: false
+        target_categories: []
         max_strikes: 3
 
       remove_missing_files:
@@ -183,6 +185,7 @@ spec:
       labels:
         app: go-decluttarr
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: go-decluttarr
           image: ghcr.io/jmylchreest/go-decluttarr:latest
@@ -218,11 +221,13 @@ spec:
                 - ALL
       volumes:
         - name: config
-          configMap:
-            name: go-decluttarr-config
+          secret:
+            secretName: go-decluttarr-config
         - name: data
           persistentVolumeClaim:
             claimName: go-decluttarr-data
       securityContext:
+        fsGroup: 65534
+        runAsGroup: 65534
         seccompProfile:
           type: RuntimeDefault

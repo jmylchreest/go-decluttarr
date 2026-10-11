@@ -23,6 +23,7 @@ type StrikeRecord struct {
 type Handler struct {
 	strikes      map[string]*StrikeRecord // key: downloadID, value: strike record
 	mu           sync.RWMutex
+	saveMu       sync.Mutex
 	persistPath  string
 	logger       *slog.Logger
 	strikesAdded int // count for current cycle
@@ -165,7 +166,10 @@ func (h *Handler) Save() error {
 		return nil
 	}
 
+	h.saveMu.Lock()
+	defer h.saveMu.Unlock()
 	h.mu.RLock()
+	count := len(h.strikes)
 	data, err := json.MarshalIndent(h.strikes, "", "  ")
 	h.mu.RUnlock()
 
@@ -175,14 +179,23 @@ func (h *Handler) Save() error {
 
 	// Ensure directory exists
 	dir := filepath.Dir(h.persistPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return fmt.Errorf("create directory: %w", err)
 	}
 
 	// Write atomically via temp file
-	tmpPath := h.persistPath + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+	f, err := os.CreateTemp(dir, ".strikes-*")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	tmpPath := f.Name()
+	defer func() { _ = os.Remove(tmpPath) }()
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("write temp file: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("close temp file: %w", err)
 	}
 
 	if err := os.Rename(tmpPath, h.persistPath); err != nil {
@@ -190,7 +203,7 @@ func (h *Handler) Save() error {
 		return fmt.Errorf("rename temp file: %w", err)
 	}
 
-	h.logger.Debug("persisted strikes", "path", h.persistPath, "count", len(h.strikes))
+	h.logger.Debug("persisted strikes", "path", h.persistPath, "count", count)
 	return nil
 }
 
@@ -211,9 +224,20 @@ func (h *Handler) Load() error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if err := json.Unmarshal(data, &h.strikes); err != nil {
+	records := make(map[string]*StrikeRecord)
+	if err := json.Unmarshal(data, &records); err != nil {
 		return fmt.Errorf("unmarshal strikes: %w", err)
 	}
+
+	if records == nil {
+		return fmt.Errorf("invalid null strike records")
+	}
+	for _, record := range records {
+		if record == nil {
+			return fmt.Errorf("invalid null strike record")
+		}
+	}
+	h.strikes = records
 
 	h.logger.Debug("loaded persisted strikes", "path", h.persistPath, "count", len(h.strikes))
 	return nil

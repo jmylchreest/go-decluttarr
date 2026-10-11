@@ -112,7 +112,7 @@ func (c *SABnzbdClient) buildURL(mode string, extraParams map[string]string) str
 func (c *SABnzbdClient) GetQueue(ctx context.Context) ([]SABnzbdSlot, error) {
 	apiURL := c.buildURL("queue", nil)
 
-	c.logger.Debug("fetching SABnzbd queue", "url", apiURL)
+	c.logger.Debug("fetching SABnzbd queue")
 
 	resp, err := c.http.Get(ctx, apiURL)
 	if err != nil {
@@ -132,7 +132,7 @@ func (c *SABnzbdClient) GetQueue(ctx context.Context) ([]SABnzbdSlot, error) {
 func (c *SABnzbdClient) GetHistory(ctx context.Context) ([]SABnzbdHistorySlot, error) {
 	apiURL := c.buildURL("history", nil)
 
-	c.logger.Debug("fetching SABnzbd history", "url", apiURL)
+	c.logger.Debug("fetching SABnzbd history")
 
 	resp, err := c.http.Get(ctx, apiURL)
 	if err != nil {
@@ -162,7 +162,15 @@ func (c *SABnzbdClient) DeleteSlot(ctx context.Context, nzoID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete slot: %w", err)
 	}
-	_ = resp.Body.Close()
+	var result struct {
+		Status bool `json:"status"`
+	}
+	if err := c.http.DecodeJSON(resp, &result); err != nil {
+		return err
+	}
+	if !result.Status {
+		return fmt.Errorf("SABnzbd rejected operation")
+	}
 
 	c.logger.Debug("deleted sabnzbd slot", "nzo_id", nzoID)
 	return nil
@@ -182,7 +190,15 @@ func (c *SABnzbdClient) PauseSlot(ctx context.Context, nzoID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to pause slot: %w", err)
 	}
-	_ = resp.Body.Close()
+	var result struct {
+		Status bool `json:"status"`
+	}
+	if err := c.http.DecodeJSON(resp, &result); err != nil {
+		return err
+	}
+	if !result.Status {
+		return fmt.Errorf("SABnzbd rejected operation")
+	}
 
 	c.logger.Debug("paused sabnzbd slot", "nzo_id", nzoID)
 	return nil
@@ -202,7 +218,15 @@ func (c *SABnzbdClient) ResumeSlot(ctx context.Context, nzoID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to resume slot: %w", err)
 	}
-	_ = resp.Body.Close()
+	var result struct {
+		Status bool `json:"status"`
+	}
+	if err := c.http.DecodeJSON(resp, &result); err != nil {
+		return err
+	}
+	if !result.Status {
+		return fmt.Errorf("SABnzbd rejected operation")
+	}
 
 	c.logger.Debug("resumed sabnzbd slot", "nzo_id", nzoID)
 	return nil
