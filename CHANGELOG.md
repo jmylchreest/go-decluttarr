@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1 — 2026-10-11
+
+- Update slog-logfilter from v0.2.1 to v0.3.0 and migrate runtime controls to
+  its handler-scoped API. Application level and job-filter changes now reach
+  existing child loggers without affecting independently created loggers.
+- Add regression coverage for JSON/text output, default logger installation,
+  dynamic levels, child filters and logger-family isolation.
+- Log sanitization remains disabled; this update preserves the existing output
+  policy and does not enable upstream optional redaction rules.
+
 ## 0.2.0 — 2026-10-11
 
 ### Added

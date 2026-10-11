@@ -30,17 +30,23 @@ func Setup(logLevel string, format string) *slog.Logger {
 	return logger
 }
 
+// SetLevel updates the application logger and its derived loggers.
+// Independently constructed loggers retain their own settings.
 func SetLevel(level slog.Level) {
-	logfilter.SetLevel(level)
+	if handler, ok := slog.Default().Handler().(*logfilter.Handler); ok {
+		handler.SetLevel(level)
+	}
 }
 
 func AddJobFilter(jobName string) {
-	logfilter.AddFilter(logfilter.LogFilter{
-		Type:    "job",
-		Pattern: jobName,
-		Level:   "debug",
-		Enabled: true,
-	})
+	if handler, ok := slog.Default().Handler().(*logfilter.Handler); ok {
+		handler.AddFilter(logfilter.LogFilter{
+			Type:    "job",
+			Pattern: jobName,
+			Level:   "debug",
+			Enabled: true,
+		})
+	}
 }
 
 func parseLevel(s string) slog.Level {
