@@ -1,0 +1,15 @@
+.git
+.aide
+.agents
+.codex
+.aws
+config.yaml
+config.yml
+*.local.yaml
+*.local.yml
+.env*
+data
+dist
+*.out
+*.test
+/go-decluttarr

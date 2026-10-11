@@ -36,3 +36,6 @@ Thumbs.db
 
 # Build artifacts
 dist/
+
+# Local AIDE session state
+.aide/

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "enabledManagers": [
+    "gomod",
+    "dockerfile",
+    "github-actions",
+    "custom.regex"
+  ],
+  "dependencyDashboard": true,
+  "minimumReleaseAge": "3 days",
+  "platformAutomerge": false,
+  "automergeType": "pr",
+  "ignoreTests": false,
+  "prConcurrentLimit": 3,
+  "packageRules": [
+    {
+      "description": "Automerge stable Go patch releases after all checks pass",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchCurrentVersion": "!/^v?0\\./",
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Review workflow, toolchain, minor and major updates",
+      "matchManagers": [
+        "github-actions",
+        "dockerfile",
+        "custom.regex"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Review Go compiler updates even when classified as patch",
+      "matchPackageNames": [
+        "go",
+        "golang"
+      ],
+      "automerge": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/\\.github/workflows/.*\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "go run (?<depName>[^@\\s]+?)(?:/cmd/[^@\\s]+)?@(?<currentValue>v[0-9.]+)"
+      ],
+      "datasourceTemplate": "go"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/\\.github/workflows/.*\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "version: (?<currentValue>v[0-9.]+)\\s+(?:scan-type|image-ref):"
+      ],
+      "depNameTemplate": "aquasecurity/trivy",
+      "datasourceTemplate": "github-releases"
+    }
+  ]
+}
