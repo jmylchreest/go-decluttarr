@@ -1,6 +1,6 @@
 # v0.2.0 release notes and checklist
 
-Status: prepared locally; not tagged or published.
+Status: prepared on release/v0.2.0 in draft PR #3; not tagged or published.
 
 ## Release notes
 
@@ -38,8 +38,9 @@ remain unwired at runtime.
 Race-enabled tests, vet, Go module verification, source vulnerability/security
 checks and static builds pass locally. Sportarr 4.1.9.1119 status and empty queue
 reads passed live. Populated queues and live Bookshelf/Shelfarr remain unverified.
-Local container build is blocked by the host's Podman mount failure; CI's image
-smoke test and vulnerability scan must pass before publication.
+The local container build is blocked by the host's Podman mount failure. CI's
+container build, smoke test and image scan passed after patching Go to 1.27.2.
+All checks must pass on the final release commit before publication.
 
 ## Publishing checklist
 

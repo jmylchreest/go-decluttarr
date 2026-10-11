@@ -1,6 +1,6 @@
 # Maintenance audit
 
-Reviewed 11 October 2026. The changes address unsafe cleanup decisions, update Go and dependencies, reduce queue latency, and add repeatable maintenance checks. They are local source changes: no release, deployment, live torrent deletion or remote repository setting change was performed.
+Reviewed 11 October 2026. The changes address unsafe cleanup decisions, update Go and dependencies, reduce queue latency, and add repeatable maintenance checks. The changes are prepared on release/v0.2.0 in draft PR #3. No release, deployment, live torrent deletion or remote repository setting change was performed.
 
 ## Dependencies and supply chain
 
@@ -118,3 +118,10 @@ two shellcheck quoting errors not detected by the local actionlint invocation;
 GITHUB_OUTPUT redirections are now quoted. The container build and version smoke
 test themselves passed on GitHub's runner. Final release readiness requires a
 successful rerun of all checks.
+
+
+The follow-up CI run passed Verify and Image, including container build, smoke
+test and vulnerability scan. Gosec required a separate tools module with
+x/tools 0.52.0 to read Go 1.27 export data; its own gRPC dependency was then
+patched to 1.83.2 after Trivy reported CVE-2026-84445. No security checks were
+disabled. The final PR run remains the authoritative release gate.
