@@ -15,12 +15,13 @@ import (
 
 // QBittorrentClient implements the Client interface for qBittorrent WebUI API
 type QBittorrentClient struct {
-	baseURL  string
-	username string
-	password string
-	http     *httpclient.Client
-	logger   *slog.Logger
-	sid      string // session cookie
+	baseURL    string
+	username   string
+	password   string
+	http       *httpclient.Client
+	logger     *slog.Logger
+	sid        string // session cookie value
+	cookieName string // SID before 5.2, QBT_SID_<port> from 5.2
 }
 
 // QBittorrentConfig holds configuration for creating a QBittorrentClient
@@ -115,7 +116,7 @@ func (c *QBittorrentClient) Login(ctx context.Context) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("login failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -127,20 +128,31 @@ func (c *QBittorrentClient) Login(ctx context.Context) error {
 	}
 
 	// Check for successful login
-	if string(body) != "Ok." {
+	if resp.StatusCode == http.StatusOK && string(body) != "Ok." {
 		return fmt.Errorf("login failed: %s", string(body))
 	}
 
 	// Extract SID cookie
 	for _, cookie := range resp.Cookies() {
-		if cookie.Name == "SID" {
+		if (cookie.Name == "SID" || strings.HasPrefix(cookie.Name, "QBT_SID_")) && cookie.Value != "" {
 			c.sid = cookie.Value
+			c.cookieName = cookie.Name
 			c.logger.DebugContext(ctx, "authenticated with qbittorrent")
 			return nil
 		}
 	}
 
 	return fmt.Errorf("SID cookie not found in login response")
+}
+
+// addSessionCookie preserves the cookie name returned by the server.
+func (c *QBittorrentClient) addSessionCookie(req *http.Request) {
+	name := c.cookieName
+	if name == "" {
+		name = "SID"
+	}
+	// #nosec G124 -- Outbound API session cookie, not a browser Set-Cookie response.
+	req.AddCookie(&http.Cookie{Name: name, Value: c.sid})
 }
 
 // Name returns the client name
@@ -163,7 +175,7 @@ func (c *QBittorrentClient) GetTorrents(ctx context.Context) ([]Torrent, error) 
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+	c.addSessionCookie(req)
 
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {
@@ -211,7 +223,7 @@ func (c *QBittorrentClient) GetTorrent(ctx context.Context, hash string) (*Torre
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+	c.addSessionCookie(req)
 
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {
@@ -267,7 +279,7 @@ func (c *QBittorrentClient) DeleteTorrent(ctx context.Context, hash string, dele
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+	c.addSessionCookie(req)
 
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {
@@ -281,7 +293,7 @@ func (c *QBittorrentClient) DeleteTorrent(ctx context.Context, hash string, dele
 		return c.DeleteTorrent(ctx, hash, deleteFiles)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
@@ -309,7 +321,7 @@ func (c *QBittorrentClient) PauseTorrent(ctx context.Context, hash string) error
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+	c.addSessionCookie(req)
 
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {
@@ -323,7 +335,7 @@ func (c *QBittorrentClient) PauseTorrent(ctx context.Context, hash string) error
 		return c.PauseTorrent(ctx, hash)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
@@ -351,7 +363,7 @@ func (c *QBittorrentClient) ResumeTorrent(ctx context.Context, hash string) erro
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+	c.addSessionCookie(req)
 
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {
@@ -365,7 +377,7 @@ func (c *QBittorrentClient) ResumeTorrent(ctx context.Context, hash string) erro
 		return c.ResumeTorrent(ctx, hash)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
@@ -389,7 +401,7 @@ func (c *QBittorrentClient) GetTrackers(ctx context.Context, hash string) ([]Tra
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+	c.addSessionCookie(req)
 
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {
@@ -449,7 +461,7 @@ func (c *QBittorrentClient) AddTags(ctx context.Context, hash string, tags []str
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+	c.addSessionCookie(req)
 
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {
@@ -462,7 +474,7 @@ func (c *QBittorrentClient) AddTags(ctx context.Context, hash string, tags []str
 		return c.AddTags(ctx, hash, tags)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
@@ -495,7 +507,7 @@ func (c *QBittorrentClient) RemoveTags(ctx context.Context, hash string, tags []
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+	c.addSessionCookie(req)
 
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {
@@ -508,7 +520,7 @@ func (c *QBittorrentClient) RemoveTags(ctx context.Context, hash string, tags []
 		return c.RemoveTags(ctx, hash, tags)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
@@ -532,7 +544,7 @@ func (c *QBittorrentClient) GetTorrentProperties(ctx context.Context, hash strin
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	req.Header.Set("Cookie", fmt.Sprintf("SID=%s", c.sid))
+	c.addSessionCookie(req)
 
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {
