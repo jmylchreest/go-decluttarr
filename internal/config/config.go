@@ -67,26 +67,27 @@ type JobsConfig struct {
 
 // JobConfig represents configuration for a specific job
 type JobConfig struct {
-	Enabled             bool          `mapstructure:"enabled"`
-	MaxStrikes          *int          `mapstructure:"max_strikes"`
-	NoStalled           *bool         `mapstructure:"no_stalled"`
-	NoSlow              *bool         `mapstructure:"no_slow"`
-	NoActive            *bool         `mapstructure:"no_active"`
-	NoUploading         *bool         `mapstructure:"no_uploading"`
-	PermittedAttempts   *int          `mapstructure:"permitted_attempts"`
-	MinDownloadSpeed    *float64      `mapstructure:"min_download_speed"`
+	TargetCategories    []string       `mapstructure:"target_categories"`
+	Enabled             bool           `mapstructure:"enabled"`
+	MaxStrikes          *int           `mapstructure:"max_strikes"`
+	NoStalled           *bool          `mapstructure:"no_stalled"`
+	NoSlow              *bool          `mapstructure:"no_slow"`
+	NoActive            *bool          `mapstructure:"no_active"`
+	NoUploading         *bool          `mapstructure:"no_uploading"`
+	PermittedAttempts   *int           `mapstructure:"permitted_attempts"`
+	MinDownloadSpeed    *float64       `mapstructure:"min_download_speed"`
 	MinTimeLeft         *time.Duration `mapstructure:"min_time_left"`
-	MinRatio            *float64      `mapstructure:"min_ratio"`
-	MaxRatio            *float64      `mapstructure:"max_ratio"`
+	MinRatio            *float64       `mapstructure:"min_ratio"`
+	MaxRatio            *float64       `mapstructure:"max_ratio"`
 	MaxSeedTime         *time.Duration `mapstructure:"max_seed_time"`
-	MaxActiveDownloads  *int          `mapstructure:"max_active_downloads"`
-	FreeSpaceThreshold  *int64        `mapstructure:"free_space_threshold"`
-	ApplyImportedAction *bool         `mapstructure:"apply_imported_action"`
-	ApplyNotImported    *bool         `mapstructure:"apply_not_imported"`
-	ApplyTags           *bool         `mapstructure:"apply_tags"`
-	TagsToApply         []string      `mapstructure:"tags_to_apply"`
-	MessagePatterns     []string      `mapstructure:"message_patterns"`
-	KeepArchives        *bool         `mapstructure:"keep_archives"`
+	MaxActiveDownloads  *int           `mapstructure:"max_active_downloads"`
+	FreeSpaceThreshold  *int64         `mapstructure:"free_space_threshold"`
+	ApplyImportedAction *bool          `mapstructure:"apply_imported_action"`
+	ApplyNotImported    *bool          `mapstructure:"apply_not_imported"`
+	ApplyTags           *bool          `mapstructure:"apply_tags"`
+	TagsToApply         []string       `mapstructure:"tags_to_apply"`
+	MessagePatterns     []string       `mapstructure:"message_patterns"`
+	KeepArchives        *bool          `mapstructure:"keep_archives"`
 }
 
 // SearchJobConfig represents configuration for search jobs
@@ -105,11 +106,14 @@ type RemoveDoneSeedingConfig struct {
 
 // InstancesConfig contains all *arr instance configurations
 type InstancesConfig struct {
-	Sonarr   []InstanceConfig `mapstructure:"sonarr"`
-	Radarr   []InstanceConfig `mapstructure:"radarr"`
-	Lidarr   []InstanceConfig `mapstructure:"lidarr"`
-	Readarr  []InstanceConfig `mapstructure:"readarr"`
-	Whisparr []InstanceConfig `mapstructure:"whisparr"`
+	Sonarr    []InstanceConfig `mapstructure:"sonarr"`
+	Radarr    []InstanceConfig `mapstructure:"radarr"`
+	Lidarr    []InstanceConfig `mapstructure:"lidarr"`
+	Readarr   []InstanceConfig `mapstructure:"readarr"`
+	Whisparr  []InstanceConfig `mapstructure:"whisparr"`
+	Sportarr  []InstanceConfig `mapstructure:"sportarr"`
+	Bookshelf []InstanceConfig `mapstructure:"bookshelf"`
+	Shelfarr  []ShelfarrConfig `mapstructure:"shelfarr"`
 }
 
 // InstanceConfig represents a single *arr instance
@@ -157,4 +161,13 @@ type NzbgetConfig struct {
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
 	Enabled  bool   `mapstructure:"enabled"`
+}
+
+// ShelfarrConfig enables read-only request monitoring and unconditional category protection.
+// Shelfarr's request API does not establish download ownership.
+type ShelfarrConfig struct {
+	Name                string   `mapstructure:"name"`
+	URL                 string   `mapstructure:"url"`
+	APIKey              string   `mapstructure:"api_key"`
+	ProtectedCategories []string `mapstructure:"protected_categories"`
 }

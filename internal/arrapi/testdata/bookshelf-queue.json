@@ -1,0 +1,1 @@
+{"page":1,"pageSize":1000,"totalRecords":1,"records":[{"id":42,"authorId":12,"bookId":34,"title":"Example Book","size":123456.0,"sizeleft":456.5,"status":"downloading","trackedDownloadState":"downloading","trackedDownloadStatus":"ok","statusMessages":[],"downloadId":"BOOK123","protocol":"torrent","downloadClient":"qbit","outputPath":"/downloads/book"}]}

@@ -2,7 +2,10 @@ package removal
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"slices"
+	"strings"
 
 	"github.com/jmylchreest/go-decluttarr/internal/config"
 	"github.com/jmylchreest/go-decluttarr/internal/jobs"
@@ -60,6 +63,10 @@ func (j *OrphansJob) Enabled() bool {
 
 // Run executes the orphans removal job
 func (j *OrphansJob) Run(ctx context.Context) error {
+	j.lastFound, j.lastRemoved = 0, 0
+	if len(j.cfg.TargetCategories) == 0 {
+		return fmt.Errorf("orphan cleanup requires explicit target_categories belonging exclusively to configured arr instances")
+	}
 	j.logger.Debug("starting orphans removal job",
 		"test_run", j.testRun,
 		"max_strikes", j.maxStrikes)
@@ -69,13 +76,17 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 
 	queues, err := j.manager.GetAllQueues(ctx)
 	if err != nil {
-		j.logger.Warn("error getting some queues, continuing with available data", "error", err)
+		return fmt.Errorf("refusing orphan cleanup with incomplete queues: %w", err)
+	}
+
+	if len(queues) == 0 {
+		return fmt.Errorf("refusing orphan cleanup without arr queues")
 	}
 
 	for instanceName, queue := range queues {
 		for _, item := range queue {
 			if item.DownloadID != "" {
-				trackedDownloads[item.DownloadID] = true
+				trackedDownloads[strings.ToLower(item.DownloadID)] = true
 			}
 		}
 		j.logger.Debug("retrieved queue from arr instance",
@@ -111,8 +122,14 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 			"count", len(torrents))
 
 		for _, torrent := range torrents {
+			if j.manager.IsShelfarrCategory(torrent.Category) {
+				continue
+			}
+			if torrent.Category == "" || !slices.Contains(j.cfg.TargetCategories, torrent.Category) {
+				continue
+			}
 			// Check if torrent is tracked by any *arr instance
-			if trackedDownloads[torrent.Hash] {
+			if trackedDownloads[strings.ToLower(torrent.Hash)] {
 				// Torrent is tracked, skip
 				continue
 			}
@@ -146,7 +163,7 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 				"strikes", currentStrikes)
 
 			// Determine removal action based on tracker type and protected tags
-			action := j.manager.GetRemovalAction(ctx, torrent.Hash)
+			action := j.manager.GetTorrentRemovalAction(ctx, &torrent, client)
 
 			switch action {
 			case "skip":

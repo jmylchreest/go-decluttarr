@@ -66,6 +66,9 @@ func (j *FailedDownloadsJob) FindAffected(queue []arrapi.QueueItem) []arrapi.Que
 	var affected []arrapi.QueueItem
 
 	for _, item := range queue {
+		if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+			continue
+		}
 		if j.isFailedDownload(item) {
 			affected = append(affected, item)
 		}
@@ -90,17 +93,17 @@ func (j *FailedDownloadsJob) isFailedDownload(item arrapi.QueueItem) bool {
 
 		// Common download failure indicators
 		if strings.Contains(title, "download") &&
-		   (strings.Contains(title, "failed") ||
-		    strings.Contains(title, "error") ||
-		    strings.Contains(title, "missing") ||
-		    strings.Contains(title, "corrupt")) {
+			(strings.Contains(title, "failed") ||
+				strings.Contains(title, "error") ||
+				strings.Contains(title, "missing") ||
+				strings.Contains(title, "corrupt")) {
 			return true
 		}
 
 		// Specific download failure messages
 		if msg.Title == "Download client unavailable" ||
-		   msg.Title == "No files found are eligible for import" ||
-		   msg.Title == "Unable to determine if file is a sample" {
+			msg.Title == "No files found are eligible for import" ||
+			msg.Title == "Unable to determine if file is a sample" {
 			return true
 		}
 	}
@@ -137,6 +140,9 @@ func (j *FailedDownloadsJob) Run(ctx context.Context) error {
 		)
 
 		for _, item := range affected {
+			if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+				continue
+			}
 			totalProcessed++
 
 			// Add strike for this download

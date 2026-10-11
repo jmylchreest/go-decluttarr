@@ -32,7 +32,7 @@ func (c *Config) Validate() error {
 	hasInstance := len(c.Instances.Sonarr) > 0 ||
 		len(c.Instances.Radarr) > 0 ||
 		len(c.Instances.Lidarr) > 0 ||
-		len(c.Instances.Readarr) > 0
+		len(c.Instances.Readarr) > 0 || len(c.Instances.Whisparr) > 0 || len(c.Instances.Sportarr) > 0 || len(c.Instances.Bookshelf) > 0 || len(c.Instances.Shelfarr) > 0
 	if !hasInstance {
 		return fmt.Errorf("at least one instance must be configured")
 	}
@@ -72,7 +72,7 @@ func (c *Config) validateGeneral() error {
 	}
 
 	// Validate tracker handling
-	validHandling := []string{"keep", "remove", "pause"}
+	validHandling := []string{"keep", "skip", "remove", "obsolete_tag"}
 	if !isValidChoice(c.General.PrivateTrackerHandling, validHandling) {
 		return fmt.Errorf("private_tracker_handling must be one of: %s", strings.Join(validHandling, ", "))
 	}
@@ -151,6 +151,32 @@ func (c *Config) validateInstances() error {
 	for _, instance := range c.Instances.Readarr {
 		if err := validateInstance(instance, "readarr", instanceNames); err != nil {
 			return err
+		}
+	}
+
+	for _, instance := range c.Instances.Whisparr {
+		if err := validateInstance(instance, "whisparr", instanceNames); err != nil {
+			return err
+		}
+	}
+	for kind, instances := range map[string][]InstanceConfig{"sportarr": c.Instances.Sportarr, "bookshelf": c.Instances.Bookshelf} {
+		for _, instance := range instances {
+			if err := validateInstance(instance, kind, instanceNames); err != nil {
+				return err
+			}
+		}
+	}
+	for _, instance := range c.Instances.Shelfarr {
+		if err := validateInstance(InstanceConfig{Name: instance.Name, URL: instance.URL, APIKey: instance.APIKey}, "shelfarr", instanceNames); err != nil {
+			return err
+		}
+		if len(instance.ProtectedCategories) == 0 {
+			return fmt.Errorf("shelfarr instance %q requires protected_categories", instance.Name)
+		}
+		for _, category := range instance.ProtectedCategories {
+			if strings.TrimSpace(category) == "" {
+				return fmt.Errorf("shelfarr instance %q has an empty protected category", instance.Name)
+			}
 		}
 	}
 

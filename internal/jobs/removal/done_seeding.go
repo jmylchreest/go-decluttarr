@@ -2,6 +2,7 @@ package removal
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -12,14 +13,14 @@ import (
 
 // DoneSeedingJob removes completed torrents that have met their seeding goals
 type DoneSeedingJob struct {
-	name         string
-	enabled      bool
-	cfg          *config.RemoveDoneSeedingConfig
-	manager      *jobs.Manager
-	logger       *slog.Logger
-	testRun      bool
-	lastFound    int
-	lastRemoved  int
+	name        string
+	enabled     bool
+	cfg         *config.RemoveDoneSeedingConfig
+	manager     *jobs.Manager
+	logger      *slog.Logger
+	testRun     bool
+	lastFound   int
+	lastRemoved int
 }
 
 // NewDoneSeedingJob creates a new done seeding removal job
@@ -52,6 +53,10 @@ func (j *DoneSeedingJob) Enabled() bool {
 
 // Run executes the done seeding removal job
 func (j *DoneSeedingJob) Run(ctx context.Context) error {
+	j.lastFound, j.lastRemoved = 0, 0
+	if len(j.cfg.TargetCategories) == 0 && len(j.cfg.TargetTags) == 0 {
+		return fmt.Errorf("done-seeding cleanup requires target_categories or target_tags")
+	}
 	j.logger.Debug("starting done seeding removal job",
 		"test_run", j.testRun,
 		"target_tags", j.cfg.TargetTags,
@@ -95,6 +100,11 @@ func (j *DoneSeedingJob) Run(ctx context.Context) error {
 			// Check if torrent is in a completed seeding state
 			// We need to check against qBittorrent's raw states
 			if !j.isCompletedState(&torrent) {
+				continue
+			}
+
+			// Apply the same protection policy as every other removal job.
+			if j.manager.GetTorrentRemovalAction(ctx, &torrent, client) != "remove" {
 				continue
 			}
 
@@ -191,10 +201,7 @@ func (j *DoneSeedingJob) matchesTarget(torrent *downloadclient.Torrent) bool {
 		}
 	}
 
-	// If no target categories or tags configured, match all
-	if len(j.cfg.TargetCategories) == 0 && len(j.cfg.TargetTags) == 0 {
-		return true
-	}
+	// Unscoped cleanup must never touch downloads owned by other tools.
 
 	return false
 }

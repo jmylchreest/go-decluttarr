@@ -82,6 +82,9 @@ func (j *MetadataMissingJob) FindAffected(queue []arrapi.QueueItem) []arrapi.Que
 	var affected []arrapi.QueueItem
 
 	for _, item := range queue {
+		if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+			continue
+		}
 		if j.hasMetadataIssue(&item) {
 			affected = append(affected, item)
 		}
@@ -169,6 +172,9 @@ func (j *MetadataMissingJob) Run(ctx context.Context) error {
 		)
 
 		for _, item := range affected {
+			if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+				continue
+			}
 			totalProcessed++
 
 			// Get reason for logging

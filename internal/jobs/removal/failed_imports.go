@@ -67,6 +67,9 @@ func (j *FailedImportsJob) FindAffected(queue []arrapi.QueueItem) []arrapi.Queue
 	var affected []arrapi.QueueItem
 
 	for _, item := range queue {
+		if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+			continue
+		}
 		if j.isFailedImport(item) {
 			affected = append(affected, item)
 		}
@@ -235,6 +238,9 @@ func (j *FailedImportsJob) Run(ctx context.Context) error {
 		)
 
 		for _, item := range affected {
+			if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+				continue
+			}
 			totalProcessed++
 
 			// Add strike for this download

@@ -85,6 +85,9 @@ func (j *BadFilesJob) FindAffected(queue []arrapi.QueueItem) []arrapi.QueueItem 
 	}
 
 	for _, item := range queue {
+		if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+			continue
+		}
 		// Check keep_archives setting
 		if keepArchives && isArchiveFile(item.Title) {
 			j.logger.Debug("skipping archive file", "title", item.Title)
@@ -155,6 +158,9 @@ func (j *BadFilesJob) Run(ctx context.Context) error {
 		)
 
 		for _, item := range affected {
+			if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+				continue
+			}
 			totalProcessed++
 
 			// Get reason for logging

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/jmylchreest/go-decluttarr/internal/arrapi"
 	"github.com/jmylchreest/go-decluttarr/internal/config"
@@ -95,10 +96,14 @@ func (j *UnmonitoredJob) Run(ctx context.Context) error {
 			"instance", instanceName,
 			"app", systemStatus.AppName)
 
+		monitoredCache := make(map[string]bool)
 		for _, item := range queue {
+			if j.manager != nil && j.manager.IsIgnoredDownloadClient(item.DownloadClient) {
+				continue
+			}
 			totalProcessed++
 
-			isUnmonitored, err := j.checkUnmonitored(ctx, client, systemStatus.AppName, &item)
+			isUnmonitored, err := j.checkUnmonitored(ctx, client, systemStatus.AppName, &item, monitoredCache)
 			if err != nil {
 				j.logger.Error("failed to check monitored status",
 					"instance", instanceName,
@@ -230,23 +235,29 @@ func (j *UnmonitoredJob) Run(ctx context.Context) error {
 }
 
 // checkUnmonitored determines if a queue item belongs to an unmonitored parent entity
-func (j *UnmonitoredJob) checkUnmonitored(ctx context.Context, client *arrapi.Client, appName string, item *arrapi.QueueItem) (bool, error) {
+func (j *UnmonitoredJob) checkUnmonitored(ctx context.Context, client *arrapi.Client, appName string, item *arrapi.QueueItem, cache map[string]bool) (bool, error) {
 	var entityType string
 	var entityID *int
 
-	switch appName {
-	case "Sonarr":
+	if client.AppType() != "" {
+		appName = client.AppType()
+	}
+	switch strings.ToLower(appName) {
+	case "sonarr":
 		entityType = "series"
 		entityID = item.SeriesID
-	case "Radarr":
+	case "radarr":
 		entityType = "movie"
 		entityID = item.MovieID
-	case "Lidarr":
+	case "lidarr":
 		entityType = "artist"
 		entityID = item.ArtistID
-	case "Readarr":
+	case "readarr", "bookshelf":
 		entityType = "author"
 		entityID = item.AuthorID
+	case "sportarr":
+		entityType = "event"
+		entityID = item.EpisodeID // Sportarr v3 compatibility API exposes event ID here.
 	default:
 		j.logger.Warn("unknown arr application type",
 			"app", appName)
@@ -254,8 +265,13 @@ func (j *UnmonitoredJob) checkUnmonitored(ctx context.Context, client *arrapi.Cl
 	}
 
 	// If no entity ID is present, item cannot be checked
-	if entityID == nil {
+	if entityID == nil || *entityID <= 0 {
 		return false, nil
+	}
+
+	key := fmt.Sprintf("%s:%d", entityType, *entityID)
+	if monitored, ok := cache[key]; ok {
+		return !monitored, nil
 	}
 
 	// Get monitored status using the helper method
@@ -263,6 +279,8 @@ func (j *UnmonitoredJob) checkUnmonitored(ctx context.Context, client *arrapi.Cl
 	if err != nil {
 		return false, err
 	}
+
+	cache[key] = monitored
 
 	// Return true if unmonitored (monitored == false)
 	return !monitored, nil

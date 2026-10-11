@@ -17,6 +17,7 @@ import (
 	"github.com/jmylchreest/go-decluttarr/internal/jobs"
 	"github.com/jmylchreest/go-decluttarr/internal/jobs/removal"
 	"github.com/jmylchreest/go-decluttarr/internal/logging"
+	"github.com/jmylchreest/go-decluttarr/internal/shelfarr"
 	"github.com/jmylchreest/go-decluttarr/internal/version"
 )
 
@@ -70,9 +71,8 @@ func main() {
 	registerAllJobs(manager, cfg, logger)
 
 	// Setup graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
 	// Main loop
 	ticker := time.NewTicker(cfg.General.Timer)
@@ -85,10 +85,6 @@ func main() {
 		select {
 		case <-ticker.C:
 			runCycle(ctx, manager, logger, cfg.General.TestRun)
-		case <-sigChan:
-			logger.Info("shutdown signal received")
-			cancel()
-			return
 		case <-ctx.Done():
 			return
 		}
@@ -168,6 +164,26 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 		logger.Debug("registered whisparr instance", "name", inst.Name, "url", inst.URL, "api", "v3")
 	}
 
+	for _, group := range []struct {
+		kind, version string
+		instances     []config.InstanceConfig
+	}{
+		{"sportarr", "v3", cfg.Instances.Sportarr},
+		{"bookshelf", "v1", cfg.Instances.Bookshelf},
+	} {
+		for _, inst := range group.instances {
+			manager.RegisterArrClient(inst.Name, arrapi.NewClient(arrapi.ClientConfig{
+				Name: inst.Name, BaseURL: inst.URL, APIKey: inst.APIKey, AppType: group.kind,
+				APIVersion: group.version, Timeout: cfg.General.RequestTimeout, SkipTLS: !cfg.General.SSLVerification, Logger: logger,
+			}))
+		}
+	}
+	for _, inst := range cfg.Instances.Shelfarr {
+		manager.RegisterShelfarrClient(inst.Name, shelfarr.NewClient(shelfarr.Config{
+			BaseURL: inst.URL, APIKey: inst.APIKey, Timeout: cfg.General.RequestTimeout, SkipTLS: !cfg.General.SSLVerification,
+		}))
+	}
+
 	// Register download clients
 	for _, dc := range cfg.DownloadClients.Qbittorrent {
 		client, err := downloadclient.NewQBittorrentClient(downloadclient.QBittorrentConfig{
@@ -228,7 +244,8 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 	}
 
 	logger.Debug("initialization complete",
-		"arr_instances", len(cfg.Instances.Sonarr)+len(cfg.Instances.Radarr)+len(cfg.Instances.Lidarr)+len(cfg.Instances.Readarr)+len(cfg.Instances.Whisparr),
+		"arr_instances", len(cfg.Instances.Sonarr)+len(cfg.Instances.Radarr)+len(cfg.Instances.Lidarr)+len(cfg.Instances.Readarr)+len(cfg.Instances.Whisparr)+len(cfg.Instances.Sportarr)+len(cfg.Instances.Bookshelf),
+		"shelfarr_instances", len(cfg.Instances.Shelfarr),
 		"download_clients", len(cfg.DownloadClients.Qbittorrent)+len(cfg.DownloadClients.Sabnzbd)+len(cfg.DownloadClients.Nzbget),
 	)
 }
