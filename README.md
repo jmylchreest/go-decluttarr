@@ -235,16 +235,7 @@ jobs:
 
 Never include Shelfarr categories, shared categories, or uncategorized downloads. `remove_done_seeding` also requires explicit target categories or tags and honors protected tags and tracker policies. Unknown torrent ownership or tracker status now skips removal. Configured Shelfarr categories override cleanup scopes and remain protected even when its API is unavailable.
 
-After upgrading, review accumulated strikes from the old orphan rule before enabling it again. The local source changes must be built and deployed to affect a running installation.
-
-## Maintenance and research
-
-See [the maintenance audit](docs/maintenance-audit.md) for security results, performance measurements, automation setup, compatibility changes, and remaining limitations. See [the integration research](docs/integrations.md) for Shelfarr, Audiobookshelf, Bookshelf, Listenarr, Sportarr, and the proposed roadmap.
-
-## License
-
-MIT
-
+After upgrading, review accumulated strikes from the old orphan rule before enabling it again. Deploy the updated image before enabling the new safeguards.
 
 ### Torrents stuck downloading metadata
 
@@ -273,3 +264,23 @@ observation; this is not a torrent-age timeout. Protected/ignored downloads are
 skipped. At the threshold, removal goes through the owning *arr, blocklisting
 the release and allowing its replacement handling; obsolete-tag policies are
 also honored. Start with `general.test_run: true`.
+
+
+## Maintenance
+
+CI runs tests, race detection, vet, workflow lint, secret scans, source and image
+security scans, and container smoke tests before publishing. Quality checks also
+run weekly and can be triggered manually. Renovate configuration is included;
+connect the Renovate app or runner to activate dependency updates. Stable Go
+library patch updates can merge after passing checks and a three-day delay;
+toolchain, container, workflow and larger updates require review.
+
+See [CHANGELOG.md](CHANGELOG.md) for release changes and upgrade requirements.
+To publish, merge a passing release PR, verify main CI, then push an annotated
+version tag such as `v0.2.0` on that commit. Tag CI publishes amd64/arm64 images
+and updates `latest`; create the GitHub release from the changelog after it
+passes. Deployments should pin the tested digest and begin with a dry run.
+
+## License
+
+MIT
