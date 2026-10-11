@@ -3,7 +3,7 @@ module github.com/jmylchreest/go-decluttarr
 go 1.27.2
 
 require (
-	github.com/jmylchreest/slog-logfilter v0.2.1
+	github.com/jmylchreest/slog-logfilter v0.3.0
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 )
