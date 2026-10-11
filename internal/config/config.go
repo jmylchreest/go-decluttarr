@@ -47,22 +47,23 @@ type JobDefaultsConfig struct {
 
 // JobsConfig contains individual job configurations
 type JobsConfig struct {
-	RemoveStalled            JobConfig               `mapstructure:"remove_stalled"`
-	RemoveSlow               JobConfig               `mapstructure:"remove_slow"`
-	RemoveFailedImports      JobConfig               `mapstructure:"remove_failed_imports"`
-	RemoveFailedDownloads    JobConfig               `mapstructure:"remove_failed_downloads"`
-	RemoveUnmonitored        JobConfig               `mapstructure:"remove_unmonitored"`
-	RemoveOrphans            JobConfig               `mapstructure:"remove_orphans"`
-	RemoveMissingFiles       JobConfig               `mapstructure:"remove_missing_files"`
-	RemoveBadFiles           JobConfig               `mapstructure:"remove_bad_files"`
-	TagOrphans               JobConfig               `mapstructure:"tag_orphans"`
-	RemoveMetadataFailed     JobConfig               `mapstructure:"remove_metadata_failed"`
-	EnforceSeedingLimits     JobConfig               `mapstructure:"enforce_seeding_limits"`
-	ManageFreeSpace          JobConfig               `mapstructure:"manage_free_space"`
-	RemoveDuplicateDownloads JobConfig               `mapstructure:"remove_duplicate_downloads"`
-	RemoveDoneSeeding        RemoveDoneSeedingConfig `mapstructure:"remove_done_seeding"`
-	SearchMissing            SearchJobConfig         `mapstructure:"search_missing"`
-	SearchUnmetCutoff        SearchJobConfig         `mapstructure:"search_unmet_cutoff"`
+	RemoveMetadataDownloading JobConfig               `mapstructure:"remove_metadata_downloading"`
+	RemoveStalled             JobConfig               `mapstructure:"remove_stalled"`
+	RemoveSlow                JobConfig               `mapstructure:"remove_slow"`
+	RemoveFailedImports       JobConfig               `mapstructure:"remove_failed_imports"`
+	RemoveFailedDownloads     JobConfig               `mapstructure:"remove_failed_downloads"`
+	RemoveUnmonitored         JobConfig               `mapstructure:"remove_unmonitored"`
+	RemoveOrphans             JobConfig               `mapstructure:"remove_orphans"`
+	RemoveMissingFiles        JobConfig               `mapstructure:"remove_missing_files"`
+	RemoveBadFiles            JobConfig               `mapstructure:"remove_bad_files"`
+	TagOrphans                JobConfig               `mapstructure:"tag_orphans"`
+	RemoveMetadataFailed      JobConfig               `mapstructure:"remove_metadata_failed"`
+	EnforceSeedingLimits      JobConfig               `mapstructure:"enforce_seeding_limits"`
+	ManageFreeSpace           JobConfig               `mapstructure:"manage_free_space"`
+	RemoveDuplicateDownloads  JobConfig               `mapstructure:"remove_duplicate_downloads"`
+	RemoveDoneSeeding         RemoveDoneSeedingConfig `mapstructure:"remove_done_seeding"`
+	SearchMissing             SearchJobConfig         `mapstructure:"search_missing"`
+	SearchUnmetCutoff         SearchJobConfig         `mapstructure:"search_unmet_cutoff"`
 }
 
 // JobConfig represents configuration for a specific job

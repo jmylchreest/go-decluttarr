@@ -234,6 +234,9 @@ func registerAllJobs(manager *jobs.Manager, cfg *config.Config, logger *slog.Log
 		job := removal.NewBadFilesJob("remove_bad_files", &cfg.Jobs.RemoveBadFiles, &cfg.JobDefaults, manager, logger, cfg.General.TestRun)
 		manager.RegisterJob(job)
 	}
+	if cfg.Jobs.RemoveMetadataDownloading.Enabled {
+		manager.RegisterJob(removal.NewMetadataDownloadingJob("remove_metadata_downloading", &cfg.Jobs.RemoveMetadataDownloading, &cfg.JobDefaults, manager, logger, cfg.General.TestRun))
+	}
 	if cfg.Jobs.RemoveMetadataFailed.Enabled {
 		job := removal.NewMetadataMissingJob("remove_metadata_failed", &cfg.Jobs.RemoveMetadataFailed, &cfg.JobDefaults, manager, logger, cfg.General.TestRun)
 		manager.RegisterJob(job)

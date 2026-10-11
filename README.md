@@ -152,7 +152,8 @@ See `deploy/k8s/deployment.yaml` for a Kubernetes deployment with Secrets and a 
 | `remove_missing_files` | Remove queue items where files no longer exist |
 | `remove_unmonitored` | Remove downloads for unmonitored content |
 | `remove_bad_files` | Remove downloads with problematic files (supports `keep_archives`) |
-| `remove_metadata_failed` | Remove downloads with metadata extraction failures |
+| `remove_metadata_failed` | Remove releases that cannot be matched to *arr library items |
+| `remove_metadata_downloading` | Remove torrents repeatedly reported as waiting for swarm metadata (opt-in) |
 | `remove_done_seeding` | Remove completed torrents that met seeding goals |
 
 ### Search Jobs (not active in the executable)
@@ -243,3 +244,32 @@ See [the maintenance audit](docs/maintenance-audit.md) for security results, per
 ## License
 
 MIT
+
+
+### Torrents stuck downloading metadata
+
+`remove_metadata_failed` retains its existing name and library-matching behavior.
+For torrents stuck in qBittorrent's `metaDL` state, enable the separate job:
+
+```yaml
+jobs:
+  remove_metadata_downloading:
+    enabled: true
+    max_strikes: 3
+    message_patterns: ["downloading metadata"]
+```
+
+Patterns are case-insensitive literal substrings of the *arr queue's error
+message, status-message title, or nested messages. Omitted/empty lists use the
+default above. This matches queued/downloading torrent entries even when they
+have a movie/series ID and tracked status is OK; completed/importing entries
+are excluded. It depends on the *arr exposing a matching message.
+
+Each observed matching cycle adds one strike per instance/client/download.
+Strikes are isolated from other jobs and reset when a fetched entry no longer
+matches. API failures do not establish recovery. With three strikes and a
+10-minute timer, the earliest action is roughly 20 minutes after first
+observation; this is not a torrent-age timeout. Protected/ignored downloads are
+skipped. At the threshold, removal goes through the owning *arr, blocklisting
+the release and allowing its replacement handling; obsolete-tag policies are
+also honored. Start with `general.test_run: true`.

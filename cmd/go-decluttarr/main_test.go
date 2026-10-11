@@ -34,6 +34,8 @@ func TestRegisterNewIntegrations(t *testing.T) {
 		Bookshelf: []config.InstanceConfig{{Name: "books", URL: server.URL, APIKey: "test"}},
 		Shelfarr:  []config.ShelfarrConfig{{Name: "requests", URL: server.URL, APIKey: "test", ProtectedCategories: []string{"shelfarr"}}},
 	}}
+	cfg.Jobs.RemoveMetadataDownloading.Enabled = true
+	cfg.JobDefaults.MaxStrikes = 3
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	m := jobs.NewManager(cfg, logger, "")
 	defer m.Close()
@@ -47,6 +49,9 @@ func TestRegisterNewIntegrations(t *testing.T) {
 	}
 	if err := m.RunAll(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+	if m.GetLastStats().JobsRun != 1 {
+		t.Fatal("metadata job not registered")
 	}
 	snapshot := m.GetLastStats().Shelfarr["requests"]
 	if snapshot == nil || snapshot.StatusCounts["processing"] != 1 {

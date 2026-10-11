@@ -114,6 +114,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("jobs.remove_missing_files.enabled", false)
 	v.SetDefault("jobs.tag_orphans.enabled", false)
 	v.SetDefault("jobs.remove_metadata_failed.enabled", false)
+	v.SetDefault("jobs.remove_metadata_downloading.enabled", false)
+	v.SetDefault("jobs.remove_metadata_downloading.message_patterns", []string{"downloading metadata"})
 	v.SetDefault("jobs.enforce_seeding_limits.enabled", false)
 	v.SetDefault("jobs.manage_free_space.enabled", false)
 	v.SetDefault("jobs.remove_duplicate_downloads.enabled", false)

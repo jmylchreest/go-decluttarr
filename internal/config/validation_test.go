@@ -59,3 +59,26 @@ func TestNewIntegrationConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func TestMetadataDownloadingConfiguration(t *testing.T) {
+	v := viper.New()
+	setDefaults(v)
+	v.Set("instances.radarr", []map[string]interface{}{{"name": "radarr", "url": "http://localhost", "api_key": "test"}})
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Jobs.RemoveMetadataDownloading.Enabled || len(cfg.Jobs.RemoveMetadataDownloading.MessagePatterns) != 1 {
+		t.Fatal("unsafe defaults")
+	}
+	zero := 0
+	cfg.Jobs.RemoveMetadataDownloading.MaxStrikes = &zero
+	if cfg.Validate() == nil {
+		t.Fatal("zero strikes accepted")
+	}
+	cfg.Jobs.RemoveMetadataDownloading.MaxStrikes = nil
+	cfg.Jobs.RemoveMetadataDownloading.MessagePatterns = []string{" "}
+	if cfg.Validate() == nil {
+		t.Fatal("blank pattern accepted")
+	}
+}

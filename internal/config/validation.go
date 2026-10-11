@@ -18,6 +18,17 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("job defaults: %w", err)
 	}
 
+	// Reject ambiguous matching patterns and destructive zero-strike overrides.
+	metadata := c.Jobs.RemoveMetadataDownloading
+	if metadata.MaxStrikes != nil && *metadata.MaxStrikes < 1 {
+		return fmt.Errorf("remove_metadata_downloading.max_strikes must be at least 1")
+	}
+	for _, pattern := range metadata.MessagePatterns {
+		if strings.TrimSpace(pattern) == "" {
+			return fmt.Errorf("remove_metadata_downloading.message_patterns must not contain blank patterns")
+		}
+	}
+
 	// Validate instances
 	if err := c.validateInstances(); err != nil {
 		return fmt.Errorf("instances: %w", err)

@@ -4,6 +4,12 @@ Status: prepared on release/v0.2.0 in draft PR #3; not tagged or published.
 
 ## Release notes
 
+Fixes issue #2: adds disabled-by-default remove_metadata_downloading for queued
+torrents waiting for swarm metadata, with configurable literal message patterns,
+independent strikes and existing protection policies. The legacy
+remove_metadata_failed job remains a library-matching rule; its docs now say so.
+
+
 This release adds Sportarr and Bookshelf queue support, Shelfarr request
 monitoring and download-category protection, and qBittorrent 5.2 session-cookie
 compatibility. It fixes unsafe orphan selection and private-tracker handling,
