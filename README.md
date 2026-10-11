@@ -5,9 +5,9 @@ A Go port of [decluttarr](https://github.com/ManiMatter/decluttarr) - automatica
 ## Features
 
 - **Removal Jobs**: Automatically remove stalled, slow, failed, orphaned, and problematic downloads
-- **Search Jobs**: Trigger searches for missing items and quality upgrades
-- **Multi-client Support**: Works with Sonarr, Radarr, Lidarr, Readarr, and Whisparr
-- **Download Clients**: qBittorrent, SABnzbd, and NZBGet
+- **Multi-client Support**: Works with Sonarr, Radarr, Lidarr, Readarr, Whisparr, Sportarr, and Bookshelf
+- **Shelfarr**: Read-only request monitoring and mandatory download-category protection
+- **Download Clients**: qBittorrent at runtime; SABnzbd and NZBGet API packages exist but are not yet wired into the executable
 - **Strike System**: Configurable strike threshold before removal (prevents false positives)
 - **Tracker-Aware**: Different handling for private vs public trackers
 - **Protected Downloads**: Tag torrents in qBittorrent to prevent removal
@@ -64,10 +64,6 @@ jobs:
     enabled: true
     target_tags: ["completed"]         # Filter by qBit tags
     target_categories: ["tv-sonarr"]   # Filter by categories
-  search_missing:
-    enabled: true
-    min_days_between_searches: 7
-    max_concurrent_searches: 3
 
 instances:
   sonarr:
@@ -140,7 +136,7 @@ services:
 
 ## Kubernetes
 
-See `deploy/k8s/deployment.yaml` for a complete Kubernetes deployment with ConfigMap, Secret, and PersistentVolumeClaim.
+See `deploy/k8s/deployment.yaml` for a Kubernetes deployment with Secrets and a PersistentVolumeClaim. Pin its example image to a tested release digest before production use.
 
 ## Jobs
 
@@ -159,7 +155,9 @@ See `deploy/k8s/deployment.yaml` for a complete Kubernetes deployment with Confi
 | `remove_metadata_failed` | Remove downloads with metadata extraction failures |
 | `remove_done_seeding` | Remove completed torrents that met seeding goals |
 
-### Search Jobs
+### Search Jobs (not active in the executable)
+
+Search implementations are incomplete and not registered by `main`. Enabling their configuration currently does not run them.
 
 | Job | Description |
 |-----|-------------|
@@ -173,7 +171,7 @@ go-decluttarr can handle private and public tracker torrents differently:
 | Mode | Behavior |
 |------|----------|
 | `remove` | Normal removal from queue and download client |
-| `skip` | Leave the download alone |
+| `skip` / `keep` | Leave the download alone |
 | `obsolete_tag` | Tag the torrent in qBittorrent instead of removing |
 
 Configure with `private_tracker_handling` and `public_tracker_handling` in the general config.
@@ -181,6 +179,66 @@ Configure with `private_tracker_handling` and `public_tracker_handling` in the g
 ## Protected Downloads
 
 To prevent specific torrents from being removed, add the configured `protected_tag` (default: "Keep") to the torrent in qBittorrent. Protected torrents are skipped by all removal jobs.
+
+## Sportarr, Bookshelf and Shelfarr
+
+Add entries under `instances` (see [config.example.yaml](config.example.yaml)):
+
+```yaml
+instances:
+  sportarr:
+    - name: sports
+      url: http://sportarr:1867
+      api_key: your-sportarr-api-key
+  bookshelf:
+    - name: books
+      url: http://bookshelf:8787
+      api_key: your-bookshelf-api-key
+  shelfarr:
+    - name: requests
+      url: http://shelfarr:3000
+      api_key: your-shelfarr-bearer-token
+      protected_categories: [shelfarr]
+```
+
+Sportarr and Bookshelf participate in queue cleanup and orphan ownership checks.
+Sportarr uses its v3 compatibility queue and native event monitoring endpoint;
+IPTV/DVR recordings are outside cleanup scope. Bookshelf uses the v1 API and
+author monitoring, matching Readarr semantics. Slow-download cleanup skips
+entries without an `added` timestamp, including current Bookshelf queues.
+The existing runtime limitation to qBittorrent cleanup still applies.
+
+Shelfarr support is **read-only monitoring plus protection**, not request
+deletion or retry. Each cycle reports status counts for up to 100 recent requests
+visible to the token; this is not a complete ownership inventory. Its configured
+`protected_categories` are required, case-sensitive, and protected on every
+download client, including on API errors or an empty response. List every category
+Shelfarr uses. Keep categories dedicated to one owner.
+
+Start with `general.test_run: true` and inspect the proposed actions. Contract
+tests use synthetic fixtures derived from upstream source; these integrations
+have not yet been validated against your running instances.
+
+## Shared download clients and Shelfarr
+
+Keep `remove_orphans` disabled when sharing a download client with Shelfarr or other unsupported managers. Absence from an *arr queue does not prove that a download is unwanted.
+
+Orphan cleanup now refuses to run without `target_categories`, or if any configured queue cannot be fetched completely. Only list categories used **exclusively** by the configured *arr instances:
+
+```yaml
+jobs:
+  remove_orphans:
+    enabled: false
+    target_categories: ["tv-sonarr", "movies-radarr"]
+```
+
+Never include Shelfarr categories, shared categories, or uncategorized downloads. `remove_done_seeding` also requires explicit target categories or tags and honors protected tags and tracker policies. Unknown torrent ownership or tracker status now skips removal. Configured Shelfarr categories override cleanup scopes and remain protected even when its API is unavailable.
+
+After upgrading, review accumulated strikes from the old orphan rule before enabling it again. The local source changes must be built and deployed to affect a running installation.
+
+## Maintenance and research
+
+See [the maintenance audit](docs/maintenance-audit.md) for security results, performance measurements, automation setup, compatibility changes, and remaining limitations. See [the integration research](docs/integrations.md) for Shelfarr, Audiobookshelf, Bookshelf, Listenarr, Sportarr, and the proposed roadmap.
 
 ## License
 
