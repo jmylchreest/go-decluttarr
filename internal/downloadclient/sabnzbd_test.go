@@ -285,7 +285,7 @@ func TestSABDeleteSlot(t *testing.T) {
 			serverResponse: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			},
-			wantErr: false, // SABnzbd client doesn't check HTTP status on delete
+			wantErr: true, // Failed requests must not be reported as successful.
 		},
 	}
 
@@ -494,6 +494,7 @@ func TestSABDeleteTorrent(t *testing.T) {
 		assert.Equal(t, "delete", r.URL.Query().Get("name"))
 		assert.Equal(t, "SABnzbd_nzo_abc123", r.URL.Query().Get("value"))
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status": true}`))
 	}))
 	defer server.Close()
 
@@ -512,6 +513,7 @@ func TestSABPauseTorrent(t *testing.T) {
 		assert.Equal(t, "pause", r.URL.Query().Get("name"))
 		assert.Equal(t, "SABnzbd_nzo_abc123", r.URL.Query().Get("value"))
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status": true}`))
 	}))
 	defer server.Close()
 
@@ -530,6 +532,7 @@ func TestSABResumeTorrent(t *testing.T) {
 		assert.Equal(t, "resume", r.URL.Query().Get("name"))
 		assert.Equal(t, "SABnzbd_nzo_abc123", r.URL.Query().Get("value"))
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status": true}`))
 	}))
 	defer server.Close()
 
@@ -626,5 +629,19 @@ func TestSABSlotToTorrent(t *testing.T) {
 			assert.Equal(t, tt.slot.Category, torrent.Category)
 			assert.Equal(t, int64(tt.slot.MB*1024*1024), torrent.Size)
 		})
+	}
+}
+
+func TestSABRejectedMutation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"status":false,"error":"rejected"}`))
+	}))
+	defer server.Close()
+	client := NewSABnzbdClient(SABnzbdConfig{BaseURL: server.URL, APIKey: "test"})
+	defer client.Close()
+	for _, operation := range []func(context.Context, string) error{client.DeleteSlot, client.PauseSlot, client.ResumeSlot} {
+		if err := operation(context.Background(), "id"); err == nil {
+			t.Fatal("rejected mutation reported as success")
+		}
 	}
 }

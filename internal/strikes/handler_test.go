@@ -148,10 +148,10 @@ func TestHasExceeded(t *testing.T) {
 	h.Add("dl1", "job1", "item1") // 3
 
 	tests := []struct {
-		name        string
-		downloadID  string
-		maxStrikes  int
-		wantExceed  bool
+		name       string
+		downloadID string
+		maxStrikes int
+		wantExceed bool
 	}{
 		{
 			name:       "below threshold",
@@ -626,5 +626,57 @@ func TestSaveAtomicWrite(t *testing.T) {
 	var strikes map[string]*StrikeRecord
 	if err := json.Unmarshal(data, &strikes); err != nil {
 		t.Errorf("persist file contains invalid JSON: %v", err)
+	}
+}
+
+func TestLoadRejectsNullWithoutReplacingState(t *testing.T) {
+	for _, data := range []string{"null", `{"x":null}`, `{"x":`} {
+		t.Run(data, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "strikes.json")
+			h := NewHandler(path, nil)
+			h.Add("existing", "job", "name")
+			if err := os.WriteFile(path, []byte(data), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := h.Load(); err == nil {
+				t.Fatal("invalid records accepted")
+			}
+			if h.Get("existing") != 1 {
+				t.Fatal("existing records lost")
+			}
+		})
+	}
+}
+
+func TestConcurrentSaveAndAdd(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "strikes.json")
+	h := NewHandler(path, nil)
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 10; j++ {
+				h.Add("id", "job", "name")
+				if err := h.Save(); err != nil {
+					t.Error(err)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	if err := h.Save(); err != nil {
+		t.Fatal(err)
+	}
+	loaded := NewHandler(path, nil)
+	if loaded.Get("id") != 80 {
+		t.Fatalf("count=%d", loaded.Get("id"))
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Fatalf("permissions=%o", info.Mode().Perm())
 	}
 }
