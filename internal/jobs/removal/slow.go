@@ -158,6 +158,9 @@ func (j *SlowDownloadJob) Run(ctx context.Context) error {
 
 				// Increment strikes
 				currentStrikes := strikesHandler.Add(item.DownloadID, j.name, item.Title)
+				if currentStrikes < j.maxStrikes {
+					jobs.RecordSkip(ctx, "waiting_for_strikes")
+				}
 				j.logger.Debug("added strike to slow download",
 					"title", item.Title,
 					"download_id", item.DownloadID,

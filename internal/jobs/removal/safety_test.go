@@ -278,3 +278,32 @@ func TestNewIntegrationMonitoredMappings(t *testing.T) {
 		})
 	}
 }
+
+func TestWaitingThenProtectedSkipsInCycleStats(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cfg := &config.Config{General: config.GeneralConfig{PrivateTrackerHandling: "keep", PublicTrackerHandling: "remove"}}
+	m := jobs.NewManager(cfg, logger, "")
+	defer m.Close()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Error("unexpected mutation")
+		}
+		fmt.Fprint(w, `{"totalRecords":1,"records":[{"id":1,"downloadId":"abc","trackedDownloadStatus":"warning","trackedDownloadState":"downloading"}]}`)
+	}))
+	defer server.Close()
+	m.RegisterArrClient("radarr", arrapi.NewClient(arrapi.ClientConfig{BaseURL: server.URL}))
+	m.RegisterDownloadClient("qbit", &safetyClient{private: true, torrents: []downloadclient.Torrent{{Hash: "abc"}}})
+	m.RegisterJob(NewFailedDownloadsJob("failed", &config.JobConfig{Enabled: true}, &config.JobDefaultsConfig{MaxStrikes: 2}, m, logger, false))
+	for _, reason := range []string{"waiting_for_strikes", "private_tracker_policy", "private_tracker_policy"} {
+		if err := m.RunAll(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		stats := m.GetLastStats()
+		if stats.ItemsFound["failed"] != 1 || stats.ItemsRemoved["failed"] != 0 {
+			t.Fatalf("stats=%+v", stats)
+		}
+		if len(stats.SkipReasons["failed"]) != 1 || stats.SkipReasons["failed"][reason] != 1 {
+			t.Fatalf("reasons=%v", stats.SkipReasons)
+		}
+	}
+}

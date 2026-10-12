@@ -22,8 +22,9 @@ type CycleStats struct {
 	Duration     time.Duration
 	JobsRun      int
 	JobsFailed   int
-	ItemsFound   map[string]int // job name -> count found
-	ItemsRemoved map[string]int // job name -> count removed
+	ItemsFound   map[string]int            // job name -> count found
+	ItemsRemoved map[string]int            // job name -> count removed
+	SkipReasons  map[string]map[string]int // job name -> fixed reason -> decision count
 	StrikesAdded int
 	StrikesReset int
 	TotalStrikes int
@@ -84,6 +85,7 @@ func (m *Manager) RunAll(ctx context.Context) error {
 		StartTime:    time.Now(),
 		ItemsFound:   make(map[string]int),
 		ItemsRemoved: make(map[string]int),
+		SkipReasons:  make(map[string]map[string]int),
 		Errors:       make([]string, 0),
 		Shelfarr:     make(map[string]*shelfarr.Snapshot),
 	}
@@ -125,7 +127,9 @@ func (m *Manager) RunAll(ctx context.Context) error {
 		m.logger.Debug("running job", "job", job.Name())
 		stats.JobsRun++
 
-		if err := job.Run(ctx); err != nil {
+		recorder := &skipRecorder{}
+		jobCtx := context.WithValue(ctx, skipRecorderKey{}, recorder)
+		if err := job.Run(jobCtx); err != nil {
 			m.logger.Error("job failed, continuing", "job", job.Name(), "error", err)
 			errs = append(errs, err)
 			failedJobs = append(failedJobs, job.Name())
@@ -135,6 +139,8 @@ func (m *Manager) RunAll(ctx context.Context) error {
 		} else {
 			m.logger.Debug("job completed successfully", "job", job.Name())
 		}
+
+		stats.SkipReasons[job.Name()] = recorder.snapshot()
 
 		// Collect job stats if available
 		if sj, ok := job.(StatsJob); ok {
@@ -177,8 +183,9 @@ func (m *Manager) RunAll(ctx context.Context) error {
 
 // JobResult represents the result of a single job for structured logging
 type JobResult struct {
-	Found   int `json:"found"`
-	Removed int `json:"removed"`
+	Found   int            `json:"found"`
+	Removed int            `json:"removed"`
+	Skipped map[string]int `json:"skipped,omitempty"`
 }
 
 // logCycleSummary outputs a summary of the execution cycle as structured log
@@ -186,11 +193,18 @@ func (m *Manager) logCycleSummary(stats *CycleStats) {
 	// Calculate totals
 	totalFound := 0
 	totalRemoved := 0
+	totalSkipped := 0
 	for _, v := range stats.ItemsFound {
 		totalFound += v
 	}
 	for _, v := range stats.ItemsRemoved {
 		totalRemoved += v
+	}
+
+	for _, reasons := range stats.SkipReasons {
+		for _, count := range reasons {
+			totalSkipped += count
+		}
 	}
 
 	// Build job results map with only non-zero entries
@@ -199,6 +213,14 @@ func (m *Manager) logCycleSummary(stats *CycleStats) {
 		removed := stats.ItemsRemoved[jobName]
 		if found > 0 || removed > 0 {
 			jobResults[jobName] = JobResult{Found: found, Removed: removed}
+		}
+	}
+
+	for jobName, reasons := range stats.SkipReasons {
+		if len(reasons) > 0 {
+			result := jobResults[jobName]
+			result.Skipped = reasons
+			jobResults[jobName] = result
 		}
 	}
 
@@ -212,6 +234,7 @@ func (m *Manager) logCycleSummary(stats *CycleStats) {
 		slog.Group("totals",
 			slog.Int("found", totalFound),
 			slog.Int("removed", totalRemoved),
+			slog.Int("skipped", totalSkipped),
 		),
 		slog.Group("strikes",
 			slog.Int("added", stats.StrikesAdded),
@@ -360,7 +383,7 @@ func (m *Manager) GetRemovalAction(ctx context.Context, downloadHash string) str
 	torrent, client := m.findTorrentByHash(ctx, downloadHash)
 	if torrent == nil {
 		m.logger.Debug("torrent not found for removal action check", "hash", downloadHash)
-		return "skip" // Ownership and protection could not be established.
+		return skipRemoval(ctx, "download_unavailable") // Ownership and protection could not be established.
 	}
 
 	return m.GetTorrentRemovalAction(ctx, torrent, client)
@@ -370,11 +393,11 @@ func (m *Manager) GetRemovalAction(ctx context.Context, downloadHash string) str
 // Direct-client jobs avoid a second lookup across unrelated clients.
 func (m *Manager) GetTorrentRemovalAction(ctx context.Context, torrent *downloadclient.Torrent, client downloadclient.Client) string {
 	if torrent == nil || client == nil {
-		return "skip"
+		return skipRemoval(ctx, "download_unavailable")
 	}
 	downloadHash := torrent.Hash
 	if m.IsShelfarrCategory(torrent.Category) {
-		return "skip"
+		return skipRemoval(ctx, "shelfarr_category")
 	}
 
 	// Check for protected tag
@@ -384,7 +407,7 @@ func (m *Manager) GetTorrentRemovalAction(ctx context.Context, torrent *download
 				m.logger.Debug("torrent has protected tag, skipping removal",
 					"hash", downloadHash,
 					"tag", m.cfg.General.ProtectedTag)
-				return "skip"
+				return skipRemoval(ctx, "protected_tag")
 			}
 		}
 	}
@@ -395,7 +418,7 @@ func (m *Manager) GetTorrentRemovalAction(ctx context.Context, torrent *download
 		m.logger.Warn("failed to determine tracker type, skipping removal",
 			"hash", downloadHash,
 			"error", err)
-		return "skip"
+		return skipRemoval(ctx, "tracker_status_unavailable")
 	}
 
 	// Step 3: Apply configured handling based on tracker type
@@ -417,13 +440,16 @@ func (m *Manager) GetTorrentRemovalAction(ctx context.Context, torrent *download
 	case "remove":
 		return "remove"
 	case "skip", "keep":
-		return "skip"
+		if isPrivate {
+			return skipRemoval(ctx, "private_tracker_policy")
+		}
+		return skipRemoval(ctx, "public_tracker_policy")
 	case "obsolete_tag":
 		return "tag"
 	default:
 		m.logger.Warn("unknown tracker handling type, skipping removal",
 			"handling", handling)
-		return "skip"
+		return skipRemoval(ctx, "unknown_tracker_policy")
 	}
 }
 

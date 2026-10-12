@@ -104,7 +104,11 @@ func (j *DoneSeedingJob) Run(ctx context.Context) error {
 			}
 
 			// Apply the same protection policy as every other removal job.
-			if j.manager.GetTorrentRemovalAction(ctx, &torrent, client) != "remove" {
+			action := j.manager.GetTorrentRemovalAction(ctx, &torrent, client)
+			if action != "remove" {
+				if action == "tag" {
+					jobs.RecordSkip(ctx, "tag_action_unsupported")
+				}
 				continue
 			}
 

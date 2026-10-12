@@ -266,6 +266,19 @@ the release and allowing its replacement handling; obsolete-tag policies are
 also honored. Start with `general.test_run: true`.
 
 
+## Cycle summaries
+
+The INFO `cycle complete` entry includes `totals.skipped` and per-job
+`skipped` reason counts, for example:
+`"skipped":{"private_tracker_policy":4,"waiting_for_strikes":2}`.
+Reasons distinguish protected tags, Shelfarr categories, private/public tracker
+policies, unavailable downloads or tracker status, unknown policies, and waiting
+for the strike threshold. Done-seeding also reports a tag policy it cannot apply.
+Counts reset each cycle and represent job decisions, not unique torrents across
+jobs. They may include protection checks before a job increments `found`;
+ordinary nonmatching queue entries are not counted. Dry-run reporting and
+action-failure logs retain their existing behavior.
+
 ## Maintenance
 
 CI runs tests, race detection, vet, workflow lint, secret scans, source and image

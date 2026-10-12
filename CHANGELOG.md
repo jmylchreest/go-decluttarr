@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2 — 2026-10-12
+
+- Add per-job skip-reason counts and a skipped-decision total to INFO cycle
+  summaries, covering removal protections and strike-threshold waiting.
+
 ## 0.2.1 — 2026-10-11
 
 - Update slog-logfilter from v0.2.1 to v0.3.0 and migrate runtime controls to
