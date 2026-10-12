@@ -125,6 +125,9 @@ func (j *UnmonitoredJob) Run(ctx context.Context) error {
 
 			// Increment strikes
 			currentStrikes := strikesHandler.Add(item.DownloadID, j.name, item.Title)
+			if currentStrikes < j.maxStrikes {
+				jobs.RecordSkip(ctx, "waiting_for_strikes")
+			}
 			j.logger.Debug("incremented strikes for unmonitored item",
 				"download_id", item.DownloadID,
 				"current_strikes", currentStrikes,

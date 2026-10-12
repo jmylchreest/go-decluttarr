@@ -133,6 +133,9 @@ func (j *StalledJob) Run(ctx context.Context) error {
 
 			// Add strike for this download
 			currentStrikes := strikesHandler.Add(item.DownloadID, j.name, item.Title)
+			if currentStrikes < j.maxStrikes {
+				jobs.RecordSkip(ctx, "waiting_for_strikes")
+			}
 			j.logger.Debug("added strike to stalled download",
 				"title", item.Title,
 				"download_id", item.DownloadID,

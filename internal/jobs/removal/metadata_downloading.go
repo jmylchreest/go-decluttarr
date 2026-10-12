@@ -124,6 +124,7 @@ func (j *MetadataDownloadingJob) Run(ctx context.Context) error {
 			count := strikes.Add(key, j.name, item.Title)
 			j.logger.Debug("download waiting for metadata", "instance", instance, "download_id", item.DownloadID, "strikes", count, "max_strikes", j.maxStrikes)
 			if count < j.maxStrikes {
+				jobs.RecordSkip(ctx, "waiting_for_strikes")
 				continue
 			}
 			if j.testRun {

@@ -123,6 +123,9 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 
 		for _, torrent := range torrents {
 			if j.manager.IsShelfarrCategory(torrent.Category) {
+				if slices.Contains(j.cfg.TargetCategories, torrent.Category) {
+					jobs.RecordSkip(ctx, "shelfarr_category")
+				}
 				continue
 			}
 			if torrent.Category == "" || !slices.Contains(j.cfg.TargetCategories, torrent.Category) {
@@ -143,6 +146,9 @@ func (j *OrphansJob) Run(ctx context.Context) error {
 
 			// Increment strikes
 			currentStrikes := strikesHandler.Add(torrent.Hash, j.name, torrent.Name)
+			if currentStrikes < j.maxStrikes {
+				jobs.RecordSkip(ctx, "waiting_for_strikes")
+			}
 			j.logger.Debug("incremented strikes for orphaned torrent",
 				"hash", torrent.Hash,
 				"current_strikes", currentStrikes,
